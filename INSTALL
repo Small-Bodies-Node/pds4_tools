@@ -1,0 +1,23 @@
+There are two options to install this package.
+
+Option 1:
+
+Use either PIP or easy_install, package managers which are included
+with most Python distributions.
+
+pip install PDS4_tools-xx.zip
+easy_install PDS4_tools-xx.zip
+
+Option 2:
+
+Extract the PDS4_tools-xx.zip to any easily accessible location. After
+launching Python, import the path as such:
+
+>>> import sys
+>>> sys.path.extend(['/path/to/your/extraction_directory'])
+
+>>> from pds4_tools import pds4_read, pds4_viewer
+
+The extraction_directory is the one that includes setup.py
+On a windows machine use backslashes (/) instead of windows' normal
+forward slashes to specify paths

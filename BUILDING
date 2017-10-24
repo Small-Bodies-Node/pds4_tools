@@ -1,0 +1,42 @@
+Building PDS4 Tools:
+
+   This file describes how to make a source build of PDS4 Tools, for distribution on
+   PyPi and on the SBN website.
+
+   For building the PDS4 Viewer as a binary, see the PYINSTALLER file for instructions.
+
+   Pre-Build Checklist:
+
+      1) Was version in setup.py updated?
+      2) Was version in pds4_tools.__init__ updated?
+      3) Was the test suite run on all necessary Python versions?
+      4) Have the Sphinx docs been updated for the new version?
+
+   Building:
+
+        From the directory containing setup.py for pds4_tools run,
+
+        pip install wheel
+        python setup.py sdist bdist_wheel
+
+        This will make a compressed distribution inside the 'dist' directory.
+
+   Post-Build Checklist:
+
+      After examining the distribution to ensure all expected files were packed,
+
+      1) Upload to PDS4 Python Tools wiki page.
+      2) Change all references to previous version to use the new version on the wiki page.
+      3) Post updated Sphinx docs.
+      4) Ensure GitHub version is updated.
+      5) Upload to PyPi via,
+
+            Setup a ~/.pypirc file for both PyPi and TestPyPi. See:
+            https://packaging.python.org/guides/migrating-to-pypi-org/
+
+            pip install twine
+            twine upload dist/pds4_tools-xx.zip
+            twine upload dist/pds4_tools-xx-py2.py3-none-any.whl
+
+            You may append  '-r testpypi' to the last two commands to upload to the test PyPi
+            first. This will ensure there are no unexpected issues once uploaded to the real PyPi.
