@@ -1,8 +1,8 @@
 .. image:: https://img.shields.io/travis/Small-Bodies-Node/pds4_tools/master.svg?label=Travis%20CI
-    :target: https://travis-ci.org/LevN0/test_rep
+    :target: https://travis-ci.org/Small-Bodies-Node/pds4_tools
 
-.. image:: https://img.shields.io/appveyor/ci/Small-Bodies-Node/pds4_tools/master.svg?label=AppVeyor
-    :target: https://ci.appveyor.com/project/LevN0/test-rep
+.. image:: https://img.shields.io/appveyor/ci/LevN0/pds4-tools/master.svg?label=AppVeyor
+    :target: https://ci.appveyor.com/project/LevN0/pds4-tools
 
 .. image:: https://img.shields.io/pypi/l/pds4_tools.svg?colorB=98C611
     :target: https://pypi.python.org/pypi/pds4_tools
