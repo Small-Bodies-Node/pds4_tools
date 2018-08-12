@@ -47,9 +47,9 @@
           <offset unit="byte">0</offset>
           <records>3</records>
           <Record_Binary>
-            <fields>35</fields>
+            <fields>39</fields>
             <groups>0</groups>
-            <record_length unit="byte">333</record_length>
+            <record_length unit="byte">338</record_length>
             <Field_Binary>
               <name>SignedByte</name>
               <field_location unit="byte">1</field_location>
@@ -213,36 +213,50 @@
                                            -1.65e308,          1.797693e308]</description>
             </Field_Binary>
             <Field_Binary>
-              <name>ASCII_Real</name>
+              <name>UnsignedBitString</name>
               <field_location unit="byte">131</field_location>
+              <data_type>UnsignedBitString</data_type>
+              <field_length unit="byte">3</field_length>
+              <description>Should contain [b'\x1cZ\xd8', b'\xfb\xfb\x18', b'ZY\xe8']</description>
+            </Field_Binary>
+            <Field_Binary>
+              <name>SignedBitString</name>
+              <field_location unit="byte">134</field_location>
+              <data_type>SignedBitString</data_type>
+              <field_length unit="byte">2</field_length>
+              <description>Should contain [b'\x013', b'\xfe\x82', b'!\xfc']</description>
+            </Field_Binary>
+            <Field_Binary>
+              <name>ASCII_Real</name>
+              <field_location unit="byte">136</field_location>
               <data_type>ASCII_Real</data_type>
               <field_length unit="byte">13</field_length>
               <description>Should contain [1.79e+308, -5.7303e100, -101.432310]</description>
             </Field_Binary>
             <Field_Binary>
               <name>ASCII_Integer</name>
-              <field_location unit="byte">144</field_location>
+              <field_location unit="byte">149</field_location>
               <data_type>ASCII_Integer</data_type>
               <field_length unit="byte">21</field_length>
               <description>Should contain [-9003372036854775800, -17396744073709550582, 25020]</description>
             </Field_Binary>
             <Field_Binary>
               <name>ASCII_NonNegative_Integer</name>
-              <field_location unit="byte">165</field_location>
+              <field_location unit="byte">170</field_location>
               <data_type>ASCII_NonNegative_Integer</data_type>
               <field_length unit="byte">20</field_length>
               <description>Should contain [17396744073709550582, 25020, 0]</description>
             </Field_Binary>
             <Field_Binary>
               <name>ASCII_Boolean</name>
-              <field_location unit="byte">185</field_location>
+              <field_location unit="byte">190</field_location>
               <data_type>ASCII_Boolean</data_type>
               <field_length unit="byte">6</field_length>
               <description>Should contain [False, False, True]</description>
             </Field_Binary>
             <Field_Binary>
               <name>ASCII_Numeric_Base2</name>
-              <field_location unit="byte">191</field_location>
+              <field_location unit="byte">196</field_location>
               <data_type>ASCII_Numeric_Base2</data_type>
               <field_length unit="byte">10</field_length>
               <description>Should contain [5, 20, 992],
@@ -250,7 +264,7 @@
             </Field_Binary>
             <Field_Binary>
               <name>ASCII_Numeric_Base8</name>
-              <field_location unit="byte">201</field_location>
+              <field_location unit="byte">206</field_location>
               <data_type>ASCII_Numeric_Base8</data_type>
               <field_length unit="byte">12</field_length>
               <description>Should contain [65, 13464640, 990198263],
@@ -258,7 +272,7 @@
             </Field_Binary>
             <Field_Binary>
               <name>ASCII_Numeric_Base16</name>
-              <field_location unit="byte">213</field_location>
+              <field_location unit="byte">218</field_location>
               <data_type>ASCII_Numeric_Base16</data_type>
               <field_length unit="byte">10</field_length>
               <description>Should contain [4024, 2881494974, 956185033423],
@@ -266,21 +280,21 @@
             </Field_Binary>
             <Field_Binary>
               <name>ASCII_String</name>
-              <field_location unit="byte">223</field_location>
+              <field_location unit="byte">228</field_location>
               <data_type>ASCII_String</data_type>
               <field_length unit="byte">16</field_length>
               <description>Should contain [' Test string 1 ', ' Test  2       ', ' Test longest 3 ']</description>
             </Field_Binary>
             <Field_Binary>
               <name>UTF8_String</name>
-              <field_location unit="byte">239</field_location>
+              <field_location unit="byte">244</field_location>
               <data_type>UTF8_String</data_type>
               <field_length unit="byte">18</field_length>
               <description>Should contain [' Tést stríng 1  ', ' Tést  2         ', ' Tést longést 3 ']</description>
             </Field_Binary>
             <Field_Binary>
               <name>Overflow ASCII_Numeric_Base16</name>
-              <field_location unit="byte">257</field_location>
+              <field_location unit="byte">262</field_location>
               <data_type>ASCII_Numeric_Base16</data_type>
               <field_length unit="byte">17</field_length>
               <description>Should contain [17396744073709550582, 36893488147419103231, 73786976294838206465],
@@ -288,7 +302,7 @@
             </Field_Binary>
             <Field_Binary>
               <name>Overflow/Scaling ASCII_Numeric_Base8</name>
-              <field_location unit="byte">274</field_location>
+              <field_location unit="byte">279</field_location>
               <data_type>ASCII_Numeric_Base8</data_type>
               <field_length unit="byte">22</field_length>
               <value_offset>-73786976294838206463</value_offset>
@@ -298,7 +312,7 @@
             </Field_Binary>
             <Field_Binary>
               <name>Overflow/Scaling ASCII_Numeric_Base2</name>
-              <field_location unit="byte">296</field_location>
+              <field_location unit="byte">301</field_location>
               <data_type>ASCII_Numeric_Base2</data_type>
               <field_length unit="byte">16</field_length>
               <value_offset>100000000000000000000</value_offset>
@@ -308,7 +322,7 @@
             </Field_Binary>
             <Field_Binary>
               <name>Scaling/Offset Integer 1</name>
-              <field_location unit="byte">312</field_location>
+              <field_location unit="byte">317</field_location>
               <data_type>ASCII_Integer</data_type>
               <field_length unit="byte">9</field_length>
               <scaling_factor>98765454</scaling_factor>
@@ -317,7 +331,7 @@
             </Field_Binary>
             <Field_Binary>
               <name>Scaling/Offset Integer 2</name>
-              <field_location unit="byte">321</field_location>
+              <field_location unit="byte">326</field_location>
               <data_type>ASCII_Integer</data_type>
               <field_length unit="byte">9</field_length>
               <scaling_factor>98765454</scaling_factor>
@@ -326,7 +340,7 @@
             </Field_Binary>
             <Field_Binary>
               <name>Scaling/Offset Float</name>
-              <field_location unit="byte">330</field_location>
+              <field_location unit="byte">335</field_location>
               <data_type>IEEE754MSBSingle</data_type>
               <field_length unit="byte">4</field_length>
               <scaling_factor>-10000000000</scaling_factor>

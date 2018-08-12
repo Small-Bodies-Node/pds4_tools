@@ -4,12 +4,14 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import re
+import abc
 import sys
 import numpy as np
 from collections import Sequence
 
 from .general_objects import Structure, Meta_Class, Meta_Structure
 from .label_objects import Meta_SpectralCharacteristics
+from .data_types import pds_to_numpy_name
 
 from ..utils.helpers import is_array_like, dict_extract
 from ..utils.exceptions import PDS4StandardsException
@@ -39,7 +41,8 @@ class TableStructure(Structure):
     See `Structure`'s and `pds4_read`'s docstrings for attributes, properties and usage instructions
     of this object.
 
-    Inherits all Attributes and Parameters from `Structure`. Overrides `info` method to implement it.
+    Inherits all Attributes and Parameters from `Structure`. Overrides `info`, `data` and `from_file`
+    methods to implement them.
     """
 
     @classmethod
@@ -248,30 +251,11 @@ class TableStructure(Structure):
 
             if np.issubdtype(np.asarray(key).dtype, np.character):
 
-                field_names = []
+                fields = [self.field(_key) for _key in key]
+                field_names = [pds_to_numpy_name(field.meta_data.full_name())
+                               for field in fields]
 
-                full_field_names = [field.meta_data.full_name() for field in self.fields]
-                partial_field_names = [field.meta_data['name'] for field in self.fields]
-
-                # Try searching by partial name if no full name is found
-                for _key in key:
-
-                    if (_key not in full_field_names) and (_key in partial_field_names):
-                        full_name = full_field_names[partial_field_names.index(_key)]
-                        field_names.append(full_name)
-
-                    else:
-                        field_names.append(_key)
-
-                data = self.data[field_names]
-
-                # Ensure all fields were found or raise an Exception; this is the default behavior of NumPy
-                # for recent (as of v1.10) versions, therefore this fix is only necessary for older versions.
-                non_matching_fields = set.difference(set(field_names), set(data.dtype.names))
-                if len(non_matching_fields) > 0:
-                    raise ValueError('no field of name {}'.format(next(iter(non_matching_fields))))
-
-                return data
+                return self.data[field_names]
 
         # Allow all other searches (slice, specific indexes, etc)
         return self.data[key]
@@ -377,6 +361,8 @@ class TableStructure(Structure):
             A structured array (either effectively np.ndarray or np.ma.MaskedArray) representing all the
             fields in this table.
         """
+
+        super(TableStructure, self).data()
 
         from .read_tables import read_table_data
         read_table_data(self, no_scale=self._no_scale, decode_strings=self._decode_strings, masked=self._masked)
@@ -571,8 +557,7 @@ class Meta_TableStructure(Meta_Structure):
             local_identifier = six.text_type(obj['local_identifier'])
 
             try:
-                obj.spectral_characteristics = Meta_SpectralCharacteristics.from_full_label(full_label,
-                                                                                            local_identifier)
+                obj.spectral_characteristics = Meta_SpectralCharacteristics.from_full_label(full_label, local_identifier)
             except (KeyError, PDS4StandardsException):
                 pass
 
@@ -1431,6 +1416,7 @@ class TableManifest(Sequence):
                                        "for field {2}".format(item['format'], width, full_location_warn))
 
 
+@six.add_metaclass(abc.ABCMeta)
 class Meta_TableElement(Meta_Class):
     """ Stores meta data about any table element.
 
@@ -1462,7 +1448,7 @@ class Meta_TableElement(Meta_Class):
         self.full_location = None
         self.group_level = 0
 
-    @classmethod
+    @abc.abstractmethod
     def from_label(cls, element_xml):
         """ Initializes the meta data from an XML description of the element.
 
@@ -1475,13 +1461,7 @@ class Meta_TableElement(Meta_Class):
         -------
         Meta_TableElement
             Instance containing meta data from *element_xml*.
-
-        Raises
-        ------
-        NotImplementedError
-            Each type of `Meta_TableElement` subclassing this class must implement its own `from_label` method.
         """
-        raise NotImplementedError
 
     def full_name(self, separator=', ', skip_parents=False):
         """ The full name of the element.
@@ -1678,7 +1658,8 @@ class Meta_Field(Meta_TableElement):
 class Meta_FieldCharacter(Meta_Field):
     """ Stores meta data about a single <Field_Character>.
 
-    Inherits ``full_location`` and ``group_level`` attributes from `Meta_Field`.
+    Inherits ``shape`` attribute from `Meta_Field`. Inherits ``full_location`` and ``group_level``
+    attributes from `Meta_TableElement`.
 
     See docstring of `Meta_Field` for usage information.
     """
@@ -1709,7 +1690,8 @@ class Meta_FieldCharacter(Meta_Field):
 class Meta_FieldBinary(Meta_Field):
     """ Stores meta data about a single <Field_Binary>.
 
-    Inherits ``full_location`` and ``group_level`` attributes from `Meta_Field`.
+    Inherits ``shape`` attribute from `Meta_Field`. Inherits ``full_location`` and ``group_level``
+    attributes from `Meta_TableElement`.
 
     See docstring of `Meta_Field` for usage information.
     """
@@ -1734,9 +1716,17 @@ class Meta_FieldBinary(Meta_Field):
         keys_must_exist = ['location', 'length', 'data_type']
         obj._check_keys_exist(keys_must_exist)
 
-        # Not yet implemented
-        # self.packed_fields = []
-        # self._set_packed_data_fields(xml_field)
+        # Add the bit fields
+        # Note: bit fields not currently supported
+        # packed_data = field_xml.find('Packed_Data_Fields')
+        # if packed_data is not None:
+        #
+        #     bit_fields = packed_data.findall('Field_Bit')
+        #
+        #     for bit_field in bit_fields:
+        #
+        #         bit_field = Meta_FieldBit.from_label(bit_field)
+        #         obj.bit_fields.append(bit_field)
 
         return obj
 
@@ -1744,7 +1734,8 @@ class Meta_FieldBinary(Meta_Field):
 class Meta_FieldDelimited(Meta_Field):
     """ Stores meta data about a single <Field_Delimited>.
 
-    Inherits ``full_location`` and ``group_level`` attributes from `Meta_Field`.
+    Inherits ``shape`` attribute from `Meta_Field`. Inherits ``full_location`` and ``group_level``
+    attributes from `Meta_TableElement`.
 
     See docstring of `Meta_Field` for usage information.
     """
@@ -1809,10 +1800,6 @@ class Meta_FieldBit(Meta_Field):
 
     @classmethod
     def from_label(cls, field_bit_xml):
-
-        # obj = super(Meta_FieldBit, cls).from_label(field_bit_xml)
-
-        # Not yet implemented
         raise NotImplementedError
 
 

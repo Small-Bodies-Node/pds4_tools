@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 
 import os
 import sys
+from posixpath import join as urljoin
 
 from .label_objects import Label
 from .read_headers import read_header
@@ -12,6 +13,7 @@ from .read_arrays import read_array
 from .read_tables import read_table
 from .general_objects import StructureList
 
+from ..utils.data_access import is_supported_url, download_file
 from ..utils.constants import PDS4_DATA_ROOT_ELEMENTS, PDS4_DATA_FILE_AREAS, PDS4_TABLE_TYPES
 from ..utils.logging import logger_init
 
@@ -39,17 +41,21 @@ def pds4_read(filename, quiet=False, lazy_load=False, no_scale=False, decode_str
         be decoded to ``str``. The return type of all data strings is
         controlled by *decode_strings*.
 
+        Remote URLs are downloaded into an on-disk cache which is cleared on
+        Python interpreter exit.
+
         Parameters
         ----------
         filename : str or unicode
-            The filename, including full or relative path if necessary, of
-            the PDS4 label describing the data.
+            The filename, including full or relative path, or a remote
+            URL to the PDS4 label describing the data.
         quiet : bool, optional
             Suppresses all info/warnings from being output.
         lazy_load : bool, optional
             If True, then the data of each PDS4 data structure will not be
-            read-in to memory until the first attempt to access it. Defaults
-            to False.
+            read-in to memory until the first attempt to access it. Additionally,
+            for remote URLs, the data is not downloaded until first access.
+            Defaults to False.
         no_scale : bool, optional
             If True, returned data will be exactly as written in the data file,
             ignoring offset or scaling values. Defaults to False.
@@ -75,7 +81,11 @@ def pds4_read(filename, quiet=False, lazy_load=False, no_scale=False, decode_str
         An outline of the label, including the array and a table with 3
         fields, is given.
 
-        >>> struct_list = pds4_read('/path/to/Example_Label.xml')
+        # Local file
+        >>> struct_list = pds4_tools.read('/path/to/Example_Label.xml')
+
+        # Remote URL
+        >>> struct_list = pds4_tools.read('http://url.com/Example_Label.xml')
 
         Example Label Outline::
 
@@ -177,7 +187,8 @@ def pds4_read(filename, quiet=False, lazy_load=False, no_scale=False, decode_str
 
     # Read-in the PDS4 label
     logger.info('Processing label: ' + filename)
-    label = Label.from_file(filename)
+    reified_filename = download_file(filename) if is_supported_url(filename) else filename
+    label = Label.from_file(reified_filename)
 
     # Read and extract all the PDS4 data structures specified in this label
     structures = read_structures(label, filename, lazy_load=lazy_load, no_scale=no_scale,
@@ -234,6 +245,9 @@ def read_structures(label, label_filename, lazy_load=False, no_scale=False, deco
     # The path of the data file is relative to the path of the label according to the PDS4 Standard
     data_path = os.path.dirname(label_filename)
 
+    # Find the path join function (filename or URL)
+    path_join_func = urljoin if is_supported_url(label_filename) else os.path.join
+
     # Find all File Areas that can contain supported data structures (e.g. File_Area_Observation)
     file_areas = []
 
@@ -244,7 +258,7 @@ def read_structures(label, label_filename, lazy_load=False, no_scale=False, deco
     for i, file_label in enumerate(file_areas):
 
         data_filename = file_label.findtext('.//file_name')
-        data_filepath = os.path.join(data_path, data_filename)
+        data_filepath = path_join_func(data_path, data_filename)
 
         # Loop over each data structure inside the File Area
         for j, structure_label in enumerate(file_label):

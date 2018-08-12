@@ -1,7 +1,7 @@
 pds4_tools.reader.read_tables module
 ====================================
 
-.. automodule:: pds4_tools.reader.read_tables
+.. currentmodule:: pds4_tools.reader.read_tables
 
 Functions
 ---------

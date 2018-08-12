@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import abc
 
 from .core import SearchableTextWindow
 from .widgets.tree import TreeView
@@ -10,9 +11,11 @@ from .widgets.tree import TreeView
 from ..reader.label_objects import (get_mission_area, get_discipline_area,
                                     get_spectral_characteristics_for_lid, get_display_settings_for_lid)
 
+from ..extern import six
 from ..extern.six.moves.tkinter import Menu, Text, BooleanVar, StringVar
 
 
+@six.add_metaclass(abc.ABCMeta)
 class LabelWindow(SearchableTextWindow):
     """ Base class; Window used to display the content of a label """
 
@@ -69,12 +72,14 @@ class LabelWindow(SearchableTextWindow):
                 view_menu.entryconfig(view_menu.index('last'), state='disabled')
 
     # Creates text pad
+    @abc.abstractmethod
     def _create_text_pad(self, frame):
-        return NotImplementedError
+        return
 
     # Sets text shown in text pad for specified label
+    @abc.abstractmethod
     def _set_label(self, label):
-        return NotImplementedError
+        return
 
     # Updates current display to show selected label (based on display type)
     def _update_label(self, *args):

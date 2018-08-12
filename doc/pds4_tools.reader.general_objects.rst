@@ -1,7 +1,7 @@
 pds4_tools.reader.general_objects module
 ========================================
 
-.. automodule:: pds4_tools.reader.general_objects
+.. currentmodule:: pds4_tools.reader.general_objects
 
 Classes
 -------

@@ -466,7 +466,7 @@ class ImageViewWindow(DataViewWindow):
         previous_slice = axis_properties['slice']
         num_slices = axis_properties['length'] - 1
 
-        if isinstance(index, str):
+        if isinstance(index, six.text_type):
 
             if index == 'next':
                 new_slice = previous_slice + 1
@@ -1092,7 +1092,7 @@ class ImageViewWindow(DataViewWindow):
                         array_data = array_data.astype('uint8')
 
                 # Adjust array of floats to be normalized in 0-1 range as MPL's imshow() expects
-                elif np.issubdtype(array_dtype, float):
+                elif np.issubdtype(array_dtype, np.floating):
                     np.divide((array_data - array_min), (array_max - array_min), out=array_data, casting='unsafe')
 
             # For grayscale colormaps we convert the data to monochrome
@@ -1595,7 +1595,7 @@ class ImageViewWindow(DataViewWindow):
                     if is_array_like(pixel_value):
 
                         # For RGB arrays we only need to format floats, integers are formatted fine as-is
-                        if np.issubdtype(pixel_value.dtype, float):
+                        if np.issubdtype(pixel_value.dtype, np.floating):
                             pixel_value = ('[' +
                                            ', '.join(["{0:0.3f}".format(i).lstrip('0') for i in pixel_value])
                                            + ']')

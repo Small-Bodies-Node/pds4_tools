@@ -40,8 +40,6 @@ PDS_NUMERIC_TYPES = {
 
     'SignedByte': ('little', 'int8', 'int'),
     'UnsignedByte': ('little', 'uint8', 'int'),
-    # 'SignedBitString': ('', '', '', None),   # Currently unhandled
-    # 'UnsignedBitString': ('', '', '', None)
 
     'ASCII_Real': ('native', 'float64', 'float'),
     'ASCII_Integer': ('native', 'int64', 'int'),
@@ -81,8 +79,9 @@ def pds_to_numpy_type(data_type=None, data=None, field_length=None, decode_strin
     decode_strings : bool, optional
         If True, and the returned dtype is a form of character, then the obtained dtype will be a form of
         unicode. If False, then for character data the obtained dtype will remain byte strings. If *data* is
-        given and is unicode, then this setting will be ignored and unicode dtype will be returned. Defaults
-        to False.
+        given and is unicode, then this setting will be ignored and unicode dtype will be returned. If
+        *data_type* is given and refers to bit-strings, then this setting will be ignored and a byte string
+        dtype will be returned. Defaults to False.
     scaling_factor : int, float or None, optional
         PDS4 scaling factor. If given, the returned dtype will be large enough to contain data scaled by
         this number. Defaults to None, indicating a value of 1.
@@ -103,6 +102,9 @@ def pds_to_numpy_type(data_type=None, data=None, field_length=None, decode_strin
     if (data is None) and (data_type is None):
         raise ValueError('Either data or a data_type must be provided.')
 
+    # Detect if dealing with bit strings
+    is_bitstring_data = (data_type is not None) and ('BitString' in data_type)
+
     # Get either a character or the initial unscaled numeric data type from data
     if data is not None:
         data = np.asanyarray(data)
@@ -110,7 +112,8 @@ def pds_to_numpy_type(data_type=None, data=None, field_length=None, decode_strin
 
         # Get dtype for character data (from data)
         if is_character_data:
-            dtype = 'U' if (np.issubdtype(data.dtype, np.unicode) or decode_strings) else 'S'
+            unicode_requested = decode_strings and not is_bitstring_data
+            dtype = 'U' if (np.issubdtype(data.dtype, np.unicode_) or unicode_requested) else 'S'
 
             if field_length is not None:
                 dtype += str(field_length)
@@ -131,7 +134,7 @@ def pds_to_numpy_type(data_type=None, data=None, field_length=None, decode_strin
 
         # Get dtype for character data (from meta data)
         if is_character_data:
-            dtype = 'U' if decode_strings else 'S'
+            dtype = 'U' if (decode_strings and not is_bitstring_data) else 'S'
 
             if field_length is not None:
                 dtype += str(field_length)
@@ -180,7 +183,9 @@ def pds_to_builtin_type(data_type=None, data=None, decode_strings=False, scaling
         If True, and the returned data type is a form of character, then the obtained data type will be
         either ``str`` (Python 3) or ``unicode`` (Python 2). If False, then for character data
         the obtained data type will remain byte strings. If *data* is given and is unicode, then this
-        setting will be ignored and unicode data type will be returned. Defaults to False.
+        setting will be ignored and unicode data type will be returned. If *data_type* is given and
+        refers to bit-strings, then this setting will be ignored and a byte string data type will be returned.
+        Defaults to False.
     scaling_factor : int, float or None, optional
         PDS4 scaling factor. If given, the returned data type will be large enough to contain data scaled by
         this number. Defaults to None, indicating a value of 1.
@@ -190,12 +195,15 @@ def pds_to_builtin_type(data_type=None, data=None, decode_strings=False, scaling
 
     Returns
     -------
-    str, unicode, int, float, bool, complex
+    str, unicode, bytes, int, float, bool, complex
         A builtin data type that can store the data described by the input parameters.
     """
 
     if (data is None) and (data_type is None):
         raise ValueError('Either data or a data_type must be provided.')
+
+    # Detect if dealing with bit strings
+    is_bitstring_data = (data_type is not None) and ('BitString' in data_type)
 
     # Get unscaled type from data
     if data is not None:
@@ -203,7 +211,8 @@ def pds_to_builtin_type(data_type=None, data=None, decode_strings=False, scaling
         is_character_data = np.issubdtype(data.dtype, np.character)
 
         if is_character_data:
-            _type = six.text_type if (decode_strings or np.issubdtype(data.dtype, np.unicode)
+            unicode_requested = decode_strings and not is_bitstring_data
+            _type = six.text_type if (np.issubdtype(data.dtype, np.unicode_) or unicode_requested
                                       ) else six.binary_type
         else:
             _type = type(np.asscalar(data[0]))
@@ -214,7 +223,7 @@ def pds_to_builtin_type(data_type=None, data=None, decode_strings=False, scaling
         is_character_data = numeric_types is None
 
         if is_character_data:
-            _type = six.text_type if decode_strings else six.binary_type
+            _type = six.text_type if (decode_strings and not is_bitstring_data) else six.binary_type
 
         else:
             _type = getattr(builtins, numeric_types[2])
@@ -261,7 +270,7 @@ def numpy_to_pds_type(dtype, ascii_numerics=False):
     """
 
     # For string dtypes
-    if np.issubdtype(dtype, np.unicode):
+    if np.issubdtype(dtype, np.unicode_):
         data_type = 'UTF8_String'
 
     elif np.issubdtype(dtype, np.string_):
@@ -432,7 +441,7 @@ def data_type_convert_table_ascii(data_type, data, mask_numeric_nulls=False, dec
             # in PDS4), there appears to be no method to tell NumPy to convert each string to be a numeric
             # Python object. Therefore we use pure Python to convert to numeric Python objects (i.e, int),
             # and then later convert the list into a NumPy array of numeric Python objects.
-            if np.issubdtype(dtype, np.float):
+            if np.issubdtype(dtype, np.floating):
 
                 # Convert ASCII_Reals to numeric type
                 data = np.asarray(data, dtype=dtype)
@@ -656,7 +665,7 @@ def get_scaled_numpy_type(data_type=None, data=None, scaling_factor=None, value_
         data = np.asanyarray(data)
         data_dtype = data.dtype
 
-    data_is_float = np.issubdtype(data_dtype, np.float)
+    data_is_float = np.issubdtype(data_dtype, np.floating)
     scaling_is_float = isinstance(scaling_factor, float)
     offset_is_float = isinstance(value_offset, float)
 
@@ -877,9 +886,9 @@ def is_pds_integer_data(data=None, pds_data_type=None):
         if np.issubdtype(data.dtype, np.integer):
             array_is_integer = True
 
-        # Check if first instance of non-masked data is integer (this is not thorough,
+        # Check if first instance of non-masked data is an integer (this is not thorough,
         # however checking all values is prohibitively expensive)
-        elif np.issubdtype(data.dtype, np.object):
+        elif data.dtype.type == np.object_:
 
             if np.ma.is_masked(data):
                 data = data.compressed()

@@ -33,7 +33,7 @@ class PDS_array(object):
     rather that all initialization and type checking should go through this helper class.
     """
 
-    def __new__(cls, data, meta_data=None, **options):
+    def __new__(cls, data, meta_data=None, masked=None, **options):
         """ Convert the input into a PDS array.
 
         Parameters
@@ -42,6 +42,9 @@ class PDS_array(object):
             Input data, of any dimension or content.
         meta_data : Meta_ArrayStructure or Meta_Field, optional
             Input meta-data.
+        masked: bool or None, optional
+            If True, forces a PDS masked array as output. If False, forces a PDS non-masked array as output.
+            Defaults to None, which determines output array-type based on input.
         options : dict, optional
             Arguments to pass directly into the NumPy array initializer.
 
@@ -49,14 +52,17 @@ class PDS_array(object):
         -------
         PDS_ndarray or PDS_marray
             A ``PDS_ndarray`` is returned if the input data is not masked, otherwise a ``PDS_marray`` will
-            be returned. Both array types will contain a view (rather than a copy) of the original data if
-            the input is an ``np.ndarray`` or its subtype.
+            be returned; unless ``masked`` is a bool. Both array types will contain a view (rather than a copy)
+            of the original data if the input is an ``np.ndarray`` or its subtype.
         """
 
-        if isinstance(data, np.ma.MaskedArray):
+        use_masked = (masked is True) or (isinstance(data, np.ma.MaskedArray) and (masked is not False))
+        use_unmasked = (masked is False) or (isinstance(data, (np.ndarray, list, tuple)) and (not use_masked))
+
+        if use_masked:
             return PDS_marray(data, meta_data=meta_data, **options)
 
-        elif isinstance(data, (np.ndarray, list, tuple)):
+        elif use_unmasked:
             return PDS_ndarray(data, meta_data=meta_data, **options)
 
         raise TypeError('Unknown data kind.')
@@ -410,7 +416,7 @@ class PDS_marray(np.ma.MaskedArray, PDS_ndarray):
 
         Returns
         -------
-        PDS_marray, np.mvoid, any scalar
+        PDS_marray, np.ma.mvoid, any scalar
             Item(s) in the array for key. If the index is selecting a field(s) or multiple records
             then the meta_data will be preserved for those fields or records.
         """
@@ -419,7 +425,8 @@ class PDS_marray(np.ma.MaskedArray, PDS_ndarray):
 
         # For structured arrays, retrieve the correct meta_data portion if we are not obtaining all of the
         # fields
-        if isinstance(obj, np.ndarray) and not isinstance(obj, np.ma.core.MaskedConstant):
+        if isinstance(obj, np.ndarray) and not isinstance(obj, np.ma.mvoid) and \
+                not isinstance(obj, np.ma.core.MaskedConstant):
 
             meta_data = self._meta_data_resolve(idx)
             obj = obj.view(PDS_marray)
@@ -606,7 +613,6 @@ class PDS_marray(np.ma.MaskedArray, PDS_ndarray):
         obj.meta_data = copy.deepcopy(getattr(self, 'meta_data', OrderedDict()))
 
         return obj
-
 
     @property
     def fill_value(self):

@@ -1,7 +1,7 @@
 pds4_tools.reader.table_objects module
 ======================================
 
-.. automodule:: pds4_tools.reader.table_objects
+.. currentmodule:: pds4_tools.reader.table_objects
 
 Classes
 -------

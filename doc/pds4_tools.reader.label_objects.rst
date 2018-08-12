@@ -1,7 +1,7 @@
 pds4_tools.reader.label_objects module
 ======================================
 
-.. automodule:: pds4_tools.reader.label_objects
+.. currentmodule:: pds4_tools.reader.label_objects
 
 Classes
 -------

@@ -19,8 +19,8 @@ class HeaderStructure(Structure):
     See `Structure`'s and `pds4_read`'s docstrings for attributes, properties and usage instructions
     of this object.
 
-    Inherits all Attributes, Parameters and Properties from `Structure`. Overrides `info` method to
-    implement it.
+    Inherits all Attributes, Parameters and Properties from `Structure`. Overrides `info`, `data`
+    and `from_file` methods to implement them.
     """
 
     @classmethod
@@ -147,6 +147,8 @@ class HeaderStructure(Structure):
         str, unicode or bytes
             The header described by this data structure.
         """
+
+        super(HeaderStructure, self).data()
 
         from .read_headers import read_header_data
         read_header_data(self)

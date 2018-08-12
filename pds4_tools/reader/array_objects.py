@@ -30,8 +30,8 @@ class ArrayStructure(Structure):
     See `Structure`'s and `pds4_read`'s docstrings for attributes, properties and usage instructions
     of this object.
 
-    Inherits all Attributes, Parameters and Properties from `Structure`. Overrides `info` method to
-    implement it.
+    Inherits all Attributes, Parameters and Properties from `Structure`. Overrides `info`, `data`
+    and `from_file` methods to implement them.
     """
 
     @classmethod
@@ -185,6 +185,8 @@ class ArrayStructure(Structure):
             An array (either effectively np.ndarray or np.ma.MaskedArray) representing all the data in
             this array structure.
         """
+
+        super(ArrayStructure, self).data()
 
         from .read_arrays import read_array_data
         read_array_data(self, no_scale=self._no_scale, masked=self._masked, memmap=False)

@@ -25,7 +25,8 @@ def init_cache():
     These should be initialized as early as possible into the Viewer startup sequence.
 
     Currently the cache is used to persist the most recently opened files, the MPL cache and the last
-    version of the viewer used.
+    version of the viewer used. Additionally, when files are opened from a URL, they are temporary
+    downloaded into the cache as well.
 
     Returns
     -------
@@ -42,6 +43,9 @@ def init_cache():
             logger.warning('Unable to create cache directory. Cache will not work. '
                            'Received: {0}'.format(str(e)))
             return
+
+    # Set the download cache location to match the Viewer cache location
+    os.environ['PDS4TOOLSCACHEDIR'] = cache_dir
 
     # Set MPL cache
     _set_mpl_cache()
@@ -91,7 +95,7 @@ def write_recently_opened(file_paths, append=True, update_last_open_dir=True):
         True if successfully written to file, False if an exception occurred.
     """
 
-    max_files = 6
+    max_files = 10
 
     # Allow a single file path as a string-like
     if isinstance(file_paths, (six.binary_type, six.text_type)):

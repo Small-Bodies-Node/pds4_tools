@@ -102,7 +102,7 @@
   <File_Area_Observational>
     <File>
       <!-- <file_name>mvn_iuv_l1a_apoapse-orbit01300-fuv_20150601T003623_v02_s02.fits</file_name> -->
-      <file_name>af.fits</file_name>
+      <file_name>äf.fits</file_name>
       <local_identifier>file</local_identifier>
       <creation_date_time>2015-06-25T18:35:03Z</creation_date_time>
       <records>79</records>

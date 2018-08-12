@@ -1,7 +1,7 @@
 pds4_tools.reader.read_headers module
 =====================================
 
-.. automodule:: pds4_tools.reader.read_headers
+.. currentmodule:: pds4_tools.reader.read_headers
 
 Functions
 ---------

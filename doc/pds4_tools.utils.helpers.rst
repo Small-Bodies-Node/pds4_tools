@@ -1,7 +1,7 @@
 pds4_tools.utils.helpers module
 ===============================
 
-.. automodule:: pds4_tools.utils.helpers
+.. currentmodule:: pds4_tools.utils.helpers
 
 Functions
 ---------

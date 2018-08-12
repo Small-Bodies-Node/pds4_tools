@@ -1,7 +1,7 @@
 pds4_tools.reader.read_label module
 ===================================
 
-.. automodule:: pds4_tools.reader.read_label
+.. currentmodule:: pds4_tools.reader.read_label
 
 Functions
 ---------

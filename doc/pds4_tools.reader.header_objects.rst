@@ -1,7 +1,7 @@
 pds4_tools.reader.header_objects module
 =======================================
 
-.. automodule:: pds4_tools.reader.header_objects
+.. currentmodule:: pds4_tools.reader.header_objects
 
 Classes
 -------

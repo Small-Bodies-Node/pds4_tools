@@ -32,4 +32,3 @@ data = [unsigned_msb4, double_lsb]
 
 for array in data:
     newFile.write(b''.join(array))
-

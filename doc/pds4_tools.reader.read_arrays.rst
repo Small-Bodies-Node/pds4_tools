@@ -1,7 +1,7 @@
 pds4_tools.reader.read_arrays module
 ====================================
 
-.. automodule:: pds4_tools.reader.read_arrays
+.. currentmodule:: pds4_tools.reader.read_arrays
 
 Functions
 ---------

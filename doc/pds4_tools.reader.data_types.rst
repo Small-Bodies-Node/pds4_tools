@@ -1,7 +1,7 @@
 pds4_tools.reader.data_types module
 ===================================
 
-.. automodule:: pds4_tools.reader.data_types
+.. currentmodule:: pds4_tools.reader.data_types
 
 Functions
 ---------

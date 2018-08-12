@@ -3,7 +3,6 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import re
 import platform
 import functools
 import numpy as np
@@ -120,12 +119,10 @@ class TabularViewWindow(DataViewWindow):
     # Adds menu options used for manipulating the data display
     def _add_menu(self):
 
-        # Adds an Export sub-menu to the File menu
+        # Adds an Export option to the File menu
         # file_menu = self._menu.winfo_children()[0]
-        # export_menu = Menu(file_menu, tearoff=0)
-
-        # file_menu.insert_cascade(0, label='Export', menu=export_menu)
-        # export_menu.add_command(label='Export as txt table', command=OpenFile)
+        # file_menu.insert_separator(0)
+        # file_menu.insert_command(0, label='Export...', command=None)
 
         # Add an Options menu
         options_menu = Menu(self._menu, tearoff=0)
@@ -304,10 +301,11 @@ class TabularViewWindow(DataViewWindow):
             if is_array_like(data_point) and len(data_point) == 1:
                 data_point = data_point[0]
 
-            # Decode byte strings to unicode strings. Done so that in Python 3, we remove the b' prefix on
-            # print/table display, and so that on Python 2 the warning below does not error out if a non-ASCII
+            # Decode byte strings to unicode strings. Done because byte strings with UTF-8 characters cannot be
+            # properly formatted, and so that on Python 2 the warning below does not error out if a non-ASCII
             # data value was not able to be formatted.
-            if isinstance(data_point, six.binary_type):
+            is_bitstring_data = 'BitString' in meta_data.get('data_type', 'none')
+            if isinstance(data_point, six.binary_type) and (not is_bitstring_data):
                 data_point = data_point.decode('utf-8')
 
             # Set display values for data points
@@ -319,9 +317,11 @@ class TabularViewWindow(DataViewWindow):
                 if self.menu_option('display_data_as_formatted'):
 
                     try:
+
                         if 'format' in meta_data:
-                            data_point = _format_data_point(data_point, meta_data['format'])
-                    except ValueError:
+                            data_point = meta_data['format'] % data_point
+
+                    except (ValueError, TypeError):
                         self._issue_warning("Unable to format value '{0}' into field_format '{1}'; "
                                             "displaying unformatted value"
                                             .format(data_point, meta_data['format']), show=False)
@@ -735,7 +735,7 @@ class FieldDefinitionToolTip(ToolTip):
 
             if line_width > max_line_width:
                 width = max_line_width
-                height += ceil(width // max_line_width)
+                height += ceil(line_width / max_line_width) - 1
 
             elif line_width > width:
                 width = line_width + 1
@@ -757,47 +757,6 @@ class FieldDefinitionToolTip(ToolTip):
         # `count` runs, and this raises an exception.
         except TclError:
             pass
-
-
-# Formats a single data point according to field_format
-def _format_data_point(datum, field_format):
-    python_field_format = '0:'
-
-    # The left justify character for python is '<' instead of '-' as in the PDS4 standard
-    if field_format[1] == '-':
-        python_field_format += '<'
-        field_format = field_format[1:]
-
-    # Fix for precision/specifier in case of integer formats; python does not support precision for integers
-    int_width = None
-    int_specifier = None
-
-    if 'd' in field_format or 'o' in field_format:
-
-        specifier_regex = re.compile('([0-9]+)\.([0-9]+)')
-        specifier_search = specifier_regex.search(field_format)
-
-        if specifier_search is not None:
-            int_width = int(specifier_search.group(1))
-            int_specifier = int(specifier_search.group(2))
-            python_field_format += '0'
-            field_format = re.sub(specifier_regex, six.text_type(int_specifier), field_format)
-
-    # Format datum according to field_format (for the most part the PDS4 standard format is the same as Python)
-    python_field_format = '{' + python_field_format + field_format[1:] + '}'
-    formatted_datum = python_field_format.format(datum)
-
-    # Finish up specifier fix in case of integers (discussed above) by adding any necessary leading spaces
-    if int_width is not None and int_specifier is not None:
-
-        # Ensures that too short a specifier does not replace actual data with zeros (i.e., padding only)
-        if int_specifier < len(formatted_datum):
-            int_specifier = len(formatted_datum)
-
-        int_format = '{0:>' + six.text_type(int_width) + '.' + six.text_type(int_specifier) + '}'
-        formatted_datum = int_format.format(formatted_datum)
-
-    return formatted_datum
 
 
 # Transforms array-like data into a TableStructure
@@ -865,7 +824,7 @@ def array_like_to_table(array_like, name, data_type, format=None, full_label=Non
 
 
 def array_structure_to_table(array_structure, _copy_data=True):
-    """ Transforms an Array Structure to a Table Structure.
+    """ Transform an Array Structure to a Table Structure.
 
     Parameters
     ----------

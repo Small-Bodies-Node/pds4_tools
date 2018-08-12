@@ -9,15 +9,17 @@ Building PDS4 Tools:
 
       1) Was version in setup.py updated?
       2) Was version in pds4_tools.__init__ updated?
-      3) Was the test suite run on all necessary Python versions?
-      4) Have the Sphinx docs been updated for the new version?
+      3) Was CHANGES.RST updated?
+      4) Was the test suite run on all necessary Python versions?
+      5) Have the Sphinx docs been updated for the new version?
 
    Building:
 
-        From the directory containing setup.py for pds4_tools run,
+        Using Python 3, from the directory containing setup.py for pds4_tools, run:
 
         pip install wheel
-        python setup.py sdist bdist_wheel
+        python setup.py sdist --formats=zip
+        python setup.py bdist_wheel
 
         This will make a compressed distribution inside the 'dist' directory.
 

@@ -754,7 +754,7 @@ class SearchableTextWindow(Window):
         search_box_parent_frame.pack(side='bottom', fill='x', anchor='nw')
 
         # Add search box
-        search_box_frame = Frame(search_box_parent_frame, height=20, bg=self.get_bg('gray'))
+        search_box_frame = Frame(search_box_parent_frame, height=22, bg=self.get_bg('gray'))
         search_box_frame.pack_propagate(False)
 
         search_box = Entry(search_box_frame, bg='white', bd=0, highlightthickness=0,
@@ -764,7 +764,7 @@ class SearchableTextWindow(Window):
         search_box.focus()
 
         search_button = Button(search_box_frame, text='Search', width=7, command=self._do_search,
-                               bg=self.get_bg('gray'))
+                               bg=self.get_bg('gray'), highlightbackground=self.get_bg('gray'))
         search_button.pack(side='left', padx=(5, 0))
         search_box_frame.pack(fill='x', padx=(5, 0), pady=5)
 

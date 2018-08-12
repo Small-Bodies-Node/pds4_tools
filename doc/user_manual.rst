@@ -29,22 +29,26 @@ This chapter provides a quick introduction into using PDS4 Python Tools. The
 goal is to demonstrate basic features without getting into too much detail.
 If you are a first time or occasional user, this is where you should start.
 
-After installing PDS4 Python Tools, start Python and load the PDS4 read library.
+After installing PDS4 Python Tools, start Python and load the PDS4 tools library.
 Note that the module name is all lower case.
 
->>> from pds4_tools import pds4_read
+>>> import pds4_tools
 
 Opening a PDS4 file
 ___________________
 
-Once `pds4_read` is imported, we can open an existing data file from its
+Once ``pds4_tools`` is imported, we can open an existing data file from its
 describing label,
 
->>> structures = pds4_read('/path/to/label.xml')
+>>> structures = pds4_tools.read('/path/to/label.xml')       # Local
+>>> structures = pds4_tools.read('http://url.com/label.xml') # Remote
 
-The function has several optional arguments that control warnings, scaling, and
-lazy-loading. It returns a PDS4 Tools object called a `StructureList` which is a
-``list``-like object, consisting of Structure objects. A Structure typically
+For remote URLs, the files will be downloaded to a temporary on-disk cache
+and deleted upon Python interpretation exit.
+
+The `pds4_tools.read` function has several optional arguments that control warnings,
+scaling, and lazy-loading. It returns a PDS4 Tools object called a `StructureList`
+which is a ``list``-like object, consisting of Structure objects. A Structure typically
 consists of a data array or table, and the label portion that describes that it.
 
 >>> structures[0]                   # First Structure
@@ -67,20 +71,20 @@ Note that LIDs and names are case-sensitive.
 Working with large files
 ________________________
 
-The `pds4_read` function, with default arguments, will immediately read all data
-structures into memory all at once. This may not be desired for labels
+The `pds4_tools.read` function, with default arguments, will immediately read
+all data structures into memory all at once. This may not be desired for labels
 describing many large data structures at once, and for this reason the
 function supports a ``lazy_load=True`` argument.
 
->>> structures = pds4_read('/path/to/label.xml', lazy_load=True)
+>>> structures = pds4_tools.read('/path/to/label.xml', lazy_load=True)
 
 When enabled, this argument ensures that data will only be transparently read-in
 upon first attempt to access that data. This has minimal impact on smaller files
 as well.
 
 Additionally, an interface is available to read only portions of PDS4 arrays into
-memory at once. For more information, see the
-:ref:`Working with Image and Array Data section <working_with_image_data>`.
+memory at once. For more information, see
+:ref:`Working with Image and Array Data <working_with_image_data>`.
 
 .. _working_with_pds4_labels:
 
@@ -356,21 +360,21 @@ this,
 
 .. code-block:: python
 
-    >>> from pds4_tools import pds4_viewer
+    >>> import pds4_tools
 
 You may then call the GUI via,
 
 .. code-block:: python
 
     >>> # Call an empty Viewer, allowing you to browse disk for file
-    >>> pds4_viewer()
+    >>> pds4_tools.view()
     >>>
     >>> # Specify path to label describing the data product to visualize
-    >>> pds4_viewer('/path/to/label.xml')
+    >>> pds4_tools.view('/path/to/label.xml')
     >>>
     >>> # Specify structures that have already been read-in
-    >>> structures = pds4_read('/path/to/label.xml')
-    >>> pds4_viewer(from_existing_structures=structures)
+    >>> structures = pds4_tools.read('/path/to/label.xml')
+    >>> pds4_tools.view(from_existing_structures=structures)
 
 Note that the basic GUI works via Tkinter, which generally ships with
 installations of Python. To enable Image View and Plot View, you must

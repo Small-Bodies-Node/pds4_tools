@@ -10,6 +10,9 @@ Welcome to PDS4 Python Tools' documentation!
 
 :ref:`API Quick Start <api_quick_start>`, for developers.
 
+
+
+:ref:`Release Notes <changes>`.
 |
 |
 

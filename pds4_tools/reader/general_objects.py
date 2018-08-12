@@ -4,14 +4,15 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import sys
+import abc
 from collections import Sequence
 
 from ..utils.helpers import xml_to_dict, is_array_like
+from ..utils.data_access import is_supported_url, download_file
 from ..utils.exceptions import PDS4StandardsException
 from ..utils.logging import logger_init
 
 from ..extern import six
-from ..extern.cached_property import threaded_cached_property
 
 # Safe import of OrderedDict
 try:
@@ -269,6 +270,7 @@ class StructureList(Sequence):
         return None
 
 
+@six.add_metaclass(abc.ABCMeta)
 class Structure(object):
     """ Stores a single PDS4 data structure.
 
@@ -402,7 +404,7 @@ class Structure(object):
         """
         return 'data' in self.__dict__
 
-    @classmethod
+    @abc.abstractmethod
     def from_file(cls, data_filename, structure_label, full_label,
                   lazy_load=False, no_scale=False, decode_strings=False):
         """ Create structure from relevant labels and file for the data.
@@ -430,14 +432,9 @@ class Structure(object):
         -------
         Structure
             An object representing the PDS4 structure; contains its label, data and meta data.
-
-        Raises
-        ------
-        NotImplementedError
-            Each type of `Structure` subclassing this class must implement its own `from_file` method.
         """
-        return NotImplementedError
 
+    @abc.abstractmethod
     def info(self, abbreviated=False, output=None):
         """ Prints a summary of this data structure.
 
@@ -455,25 +452,19 @@ class Structure(object):
         None or list
             If output is False, then returns a list representing the summary parameters for the Structure.
             Otherwise returns None.
-
-        Raises
-        ------
-        NotImplementedError
-            Each type of `Structure` subclassing class must implement its own `info` method.
         """
 
-        raise NotImplementedError
-
-    @threaded_cached_property
+    @abc.abstractmethod
     def data(self):
         """ The data of this PDS4 structure.
 
-        Raises
-        ------
-        NotImplementedError
-            Each type of `Structure` subclassing this class must implement its own `data` method.
+        Returns
+        -------
+            Data for the structure; details are defined by the subclass.
         """
-        raise NotImplementedError
+
+        if is_supported_url(self.parent_filename):
+            self.parent_filename = download_file(self.parent_filename)
 
     def is_array(self):
         """

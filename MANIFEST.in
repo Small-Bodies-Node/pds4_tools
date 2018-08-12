@@ -2,6 +2,7 @@ include LICENSES
 include INSTALL
 include CREDITS
 include README.rst
+include CHANGES.rst
 include setup.cfg
 include pds4_tools/viewer/logo/*
 recursive-include doc *

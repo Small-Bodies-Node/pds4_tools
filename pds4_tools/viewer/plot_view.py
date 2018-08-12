@@ -2691,7 +2691,7 @@ class PlotColumnsWindow(Window):
 
             # Disable non-numeric fields, fields with more than one dimension and fields with only one value
             is_flat_array = (len(field.shape) == 1) and (field.size > 1)
-            is_numeric_array = np.issubdtype(field.dtype, float) or is_pds_integer_data(data=field)
+            is_numeric_array = np.issubdtype(field.dtype, np.floating) or is_pds_integer_data(data=field)
 
             if (not is_flat_array) or (not is_numeric_array):
                 self._disabled_indexes.append(i+1)
@@ -2723,7 +2723,8 @@ class PlotColumnsWindow(Window):
             choose_field = functools.partial(self._choose_field, i)
 
             button = Button(axis_options_box, text=axis_type, width=6, font=self.get_font(size=9),
-                            bg=self.get_bg('gray'), command=choose_field)
+                            bg=self.get_bg('gray'), highlightbackground=self.get_bg('gray'),
+                            command=choose_field)
             button.grid(row=i+1, column=0)
 
             entry = Entry(axis_options_box, width=field_name_width, state='readonly', relief='sunken', bd=1,
@@ -2766,7 +2767,8 @@ class PlotColumnsWindow(Window):
 
         buttons_box = Frame(bottom_box, bg=self.get_bg('gray'))
         buttons_box.pack()
-        bottom_buttons_params = {'width': 5, 'font': self.get_font(size=10), 'bg': self.get_bg('gray')}
+        bottom_buttons_params = {'width': 5, 'font': self.get_font(size=10),
+                                 'bg': self.get_bg('gray'), 'highlightbackground': self.get_bg('gray')}
 
         plot = Button(buttons_box, text='Plot', command=self._plot, **bottom_buttons_params)
         plot.grid(row=0, column=0, padx=5)

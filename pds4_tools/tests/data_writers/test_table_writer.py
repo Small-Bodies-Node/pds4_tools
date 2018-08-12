@@ -53,6 +53,9 @@ complex_lsb16 = [struct.pack('<d', val) for val in [2.215073858*10**-308, 1.41*1
                                                     -1.65*10**308, 1.797693*10**308]]
 complex_lsb16 = np.asarray([b''.join(complex_lsb16[i:i+2]) for i in range(0, 6, 2)], dtype='object')
 
+unsigned_bitstring = np.asarray([b'\x1cZ\xd8', b'\xfb\xfb\x18', b'ZY\xe8'], dtype='object')
+signed_bitstring = np.asarray([b'\x013', b'\xfe\x82', b'!\xfc'], dtype='object')
+
 ascii_real =    np.asarray(['   1.79e+308 ', '  -5.7303e100', '-101.432310  '], dtype='object')
 ascii_integer = np.asarray([' -9003372036854775800', '   396744073709550582', '       25020         '], dtype='object')
 ascii_nonnegative_integer = np.asarray(['17396744073709550582', '               25020', '                   0'], dtype='object')
@@ -77,7 +80,8 @@ binary_table = np.vstack((signed_byte, unsigned_byte,
                    signed_lsb2, signed_lsb4, signed_lsb8,
                    unsigned_lsb2, unsigned_lsb4, unsigned_lsb8,
                    float_lsb, double_lsb,
-                   complex_lsb8, complex_lsb16)).transpose()
+                   complex_lsb8, complex_lsb16,
+                   unsigned_bitstring, signed_bitstring)).transpose()
 
 ascii_table = np.vstack((ascii_real, ascii_integer, ascii_nonnegative_integer, ascii_boolean,
                          ascii_base2, ascii_base8, ascii_base16,

@@ -13,7 +13,7 @@ some familiarity with reading in PDS4 data. The :ref:`full API reference <index>
 is also available.
 
 As the User Manual notes, to read-in data, you will most likely
-use the ``pds4_read`` function,
+use the ``pds4_tools.read`` function, which is an alias for,
 
 `pds4_read`
 

@@ -1,7 +1,7 @@
 pds4_tools.reader.core module
 =============================
 
-.. automodule:: pds4_tools.reader.core
+.. currentmodule:: pds4_tools.reader.core
 
 Functions
 ---------
@@ -14,6 +14,10 @@ Functions
 
 Details
 -------
+
+.. function:: pds4_tools.read
+
+    An alias of `pds4_read`.
 
 .. automodule:: pds4_tools.reader.core
     :members:

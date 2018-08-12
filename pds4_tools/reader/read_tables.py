@@ -422,8 +422,8 @@ def _get_delimited_records_and_start_bytes(records, table_structure, table_manif
     and ends at the start byte of the next column value.
 
     In principle there are a number of ways to read a delimited table. The built-in Python delimited table
-    reader does not support specifying line-endings as solely those allowed by PDS4. NumPy's delimited table
-    reader was found to be much slower than the technique below, though this should be retested periodically.
+    reader does not support specifying line-endings as solely those allowed by PDS4. NumPy's ``genfromtxt``
+     was found to be much slower than the technique below, though this should be retested periodically.
     For manual reading (i.e., without using above tools), one could read a delimited table in row by row:
     however when converting each value to a data type, there is CPU overhead in determining what that data
     type should be and the conversion itself. If we read a row, and then convert each value for that row one
@@ -434,8 +434,8 @@ def _get_delimited_records_and_start_bytes(records, table_structure, table_manif
     However in general this approach is often very memory intensive because the strings, especially with
     overhead, require more memory to store than once the data is converted to its desired type. Instead, we
     take a similar approach where we use a 2D array_like[column, record] to record the start bytes of the data
-    for each column but do not actually split each record into fields. We try to use the memory efficient
-    ``array.array`` and minimal size required to store each start byte, this will nearly always result in
+    for each column but do not actually split each record into fields. We use NumPy ndarrays with integer
+    dtypes of minimal size required to store each start byte; this will nearly always result in
     significantly less memory than would be required to actually split each field into a string since the
     start bytes will nearly always be 1 or 2 bytes each because records are rarely longer than 65535
     characters.
@@ -491,10 +491,10 @@ def _get_delimited_records_and_start_bytes(records, table_structure, table_manif
 
         num_columns += 1 if (not repetitions) else reduce(lambda x, y: x*y, repetitions)
 
-    # Pre-allocate ``list``, which will store either ``array.array``s or other ``list``s that contain the
-    # start byte of each field for each record. Thus `start_bytes` is a two-dimensional array_like, where
-    # the first dimension is the field and the second dimension is the record, with the value being the
-    # start byte of the data for those parameters.
+    # Pre-allocate ``list``, which will store NumPy ndarray's, containing the start byte of each field
+    # for each record. Thus `start_bytes` is a two-dimensional array_like, where the first dimension is
+    # the field and the second dimension is the record, with the value being the start byte of the data
+    # for those parameters.
     start_bytes = [None] * (num_columns + 1)
 
     longest_record = len(max(records, key=len))
@@ -740,9 +740,10 @@ def new_table(fields, no_scale=False, decode_strings=False, masked=None, copy=Tr
             extracted_data = field.copy() if copy else field
             meta_field = field.meta_data
             special_constants = meta_field.get('Special_Constants')
+            is_bitstring_data = 'BitString' in meta_field.get('data_type', 'none')
 
             # Adjust data to decode strings if requested
-            if np.issubdtype(extracted_data.dtype, np.character) and decode_strings:
+            if np.issubdtype(extracted_data.dtype, np.character) and (not is_bitstring_data) and decode_strings:
                 extracted_data = decode_bytes_to_unicode(extracted_data)
 
             # Adjust data values to account for 'scaling_factor' and 'value_offset' (in-place if possible)
@@ -936,7 +937,7 @@ def read_table_data(table_structure, no_scale, decode_strings, masked):
 
         except ValueError as e:
             six.raise_from(ValueError("Unable to convert field '{0}' to data_type '{1}': {2}"
-                                      .format(field['name'], field['data_type'], e)), None)
+                                      .format(field['name'], field['data_type'], repr(e.args[0]))), None)
 
         # Save a preliminary version of each field
         # (cast to its initial data type but without any scaling or other adjustments)
