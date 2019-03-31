@@ -7,23 +7,23 @@ PDS4 Python Tools - User Manual
     :local:
     :backlinks: none
 
-Section 1 - Introduction
-------------------------
+1.1 Introduction
+----------------
 
 PDS4 Python Tools are several modules integrated into a Python library to
 provide access to PDS4 data.
 
 
-Section 2 - Installation
-------------------------
+1.2  Installation
+-----------------
 
 Installation instructions are currently provided at:
 
 http://sbndev.astro.umd.edu/wiki/Python_PDS4_Tools#Installation
 
 
-Section 3 - Quick Tutorial
---------------------------
+1.3  Quick Tutorial
+-------------------
 
 This chapter provides a quick introduction into using PDS4 Python Tools. The
 goal is to demonstrate basic features without getting into too much detail.
@@ -381,7 +381,7 @@ installations of Python. To enable Image View and Plot View, you must
 also have recent versions of `Matplotlib <http://matplotlib.org>`_
 installed.
 
-Section 5 -  API
-----------------
+1.4  API
+--------
 
 The full API reference is available :ref:`here <index>`.
