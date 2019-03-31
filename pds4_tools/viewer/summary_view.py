@@ -3,8 +3,10 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import os
 import io
 import math
+import binascii
 import platform
 import functools
 import traceback
@@ -50,14 +52,10 @@ class StructureListWindow(Window):
         self._canvas = None
         self._scrolled_frame = None
         self._structure_list = None
-        self._export_menu = None
-        self._recent_menu = None
         self._label_open = False
 
         # Create menu
-        self._menu = Menu(self._widget)
-        self._widget.config(menu=self._menu)
-        self._add_menu(quiet, lazy_load, show_headers)
+        self._add_menus(quiet, lazy_load, show_headers)
 
         # Add notify event for scroll wheel (used to scroll structure list)
         self._bind_scroll_event(self._mousewheel_scroll)
@@ -200,8 +198,8 @@ class StructureListWindow(Window):
         # Add View Menu and the Export Menu, if not already done
         if not self._label_open:
 
-            view_menu = Menu(self._menu, tearoff=0)
-            self._menu.add_cascade(label='View', menu=view_menu)
+            # Add a View menu
+            view_menu = self._add_menu('View', in_menu='main')
 
             view_menu.add_command(label='Full Label', command=self._open_label)
 
@@ -213,9 +211,8 @@ class StructureListWindow(Window):
             view_menu.add_checkbutton(label='Show Headers', onvalue=True, offvalue=False,
                                       variable=self._menu_options['show_headers'])
 
-            # Add Export menu
-            self._export_menu = Menu(self._menu, tearoff=0, postcommand=self._update_export)
-            self._menu.add_cascade(label='Export', menu=self._export_menu)
+            # Add an Export menu
+            self._add_menu('Export', in_menu='main', postcommand=self._update_export)
 
         # Draw summary for structures found
         has_structures = len(self._structure_list) > 0
@@ -545,7 +542,7 @@ class StructureListWindow(Window):
             else:
                 self.open_label(filename)
 
-    def _add_menu(self, quiet, lazy_load, show_headers):
+    def _add_menus(self, quiet, lazy_load, show_headers):
 
         # Initialize menu options
         self._menu_options['quiet'] = BooleanVar()
@@ -557,28 +554,26 @@ class StructureListWindow(Window):
         self._menu_options['show_headers'] = BooleanVar()
         self._add_trace(self._menu_options['show_headers'], 'w', self._update_show_headers, default=show_headers)
 
-        # Create file menu
-        file_menu = Menu(self._menu, tearoff=0)
+        # Add a File menu
+        file_menu = self._add_menu('File', in_menu='main')
         file_menu.add_command(label='Open...', command=lambda: self._open_file_box(False))
         file_menu.add_command(label='Open from URL...', command=lambda:
                                 self._add_dependent_window(OpenFromURLWindow(self._viewer, self._widget, self)))
         file_menu.add_command(label='Open in New Window...', command=lambda: self._open_file_box(True))
-
         file_menu.add_separator()
-        self._recent_menu = Menu(file_menu, tearoff=0, postcommand=self._update_recently_opened)
-        file_menu.add_cascade(label='Open Recent', menu=self._recent_menu)
+
+        # Add an Open Recent sub-menu to File menu
+        self._add_menu('Open Recent', in_menu='File', postcommand=self._update_recently_opened)
 
         file_menu.add_separator()
         file_menu.add_command(label='Exit', command=self._viewer.quit)
-        self._menu.add_cascade(label='File', menu=file_menu)
 
-        # Create options menu
-        options_menu = Menu(self._menu, tearoff=0)
+        # Add an Options menu
+        options_menu = self._add_menu('Options', in_menu='main')
         options_menu.add_checkbutton(label='Lazy-Load Data', onvalue=True, offvalue=False,
                                      variable=self._menu_options['lazy_load'])
         options_menu.add_checkbutton(label='Hide Warnings', onvalue=True, offvalue=False,
                                      variable=self._menu_options['quiet'])
-        self._menu.add_cascade(label='Options', menu=options_menu)
 
     # Updates the logger state to match current menu options value
     def _update_quiet(self, *args):
@@ -611,7 +606,8 @@ class StructureListWindow(Window):
             return
 
         # Clear out all existing menu entries
-        self._export_menu.delete(0, self._export_menu.index('last'))
+        export_menu = self._menu('Export')
+        export_menu.delete(0, export_menu.index('last'))
 
         # Show export buttons for arrays and tables
         has_export_structures = False
@@ -619,31 +615,32 @@ class StructureListWindow(Window):
         for structure in self._structure_list:
             if structure.is_array() or structure.is_table():
                 has_export_structures = True
-                self._export_menu.add_command(label='{0}...'.format(structure.id[0:29]),
+                export_menu.add_command(label='{0}...'.format(structure.id[0:29]),
                     command=lambda structure=structure:
                     self._add_dependent_window(DataExportWindow(self._viewer, self._widget, structure)))
 
-        # Show a disabled None supported export options
+        # Handle case when are no supported export structures
         if not has_export_structures:
-            self._export_menu.add_command(label='None', state='disabled')
+            export_menu.add_command(label='None', state='disabled')
 
     # Updates recently opened menu just prior to showing it
     def _update_recently_opened(self):
 
         recent_paths = cache.get_recently_opened()
+        recent_menu = self._menu('Open Recent', in_menu='File')
 
         # Clear out all existing menu entries
-        self._recent_menu.delete(0, self._recent_menu.index('last'))
+        recent_menu.delete(0, recent_menu.index('last'))
 
-        # Show a disabled None option if no existing paths
+        # Handle case when there are no recently opened files
         if len(recent_paths) == 0:
-            self._recent_menu.add_command(label='None', state='disabled')
+            recent_menu.add_command(label='None', state='disabled')
 
         # Show recently opened files
         else:
 
             for path in recent_paths:
-                self._recent_menu.add_command(label=path, command=lambda path=path: self.open_label(path))
+                recent_menu.add_command(label=path, command=lambda path=path: self.open_label(path))
 
     # Called on mouse wheel scroll action, scrolls structure list up or down if scrollbar is shown
     def _mousewheel_scroll(self, event):
@@ -672,8 +669,8 @@ class StructureListWindow(Window):
         if self._label_open:
 
             self._set_title(self._get_title().split('-')[0].strip())
-            self._menu.delete('View')
-            self._menu.delete('Export')
+            self._remove_menu('View', in_menu='main')
+            self._remove_menu('Export', in_menu='main')
             self._erase_summary()
             self._structure_list = None
             self._label_open = False
@@ -865,6 +862,8 @@ class DataExportWindow(Window):
         if filename == '' or filename == ():
             return
 
+        cache.write_last_open_dir(os.path.dirname(filename))
+
         # Export the data
         delimiter = {'fixed': None,
                      'csv': ',',
@@ -973,11 +972,10 @@ def _export_data(filename, data, delimiter=None, fmt=None, newline='\r\n'):
 
     Notes
     -----
-    Supports both PDS4 Tables and Arrays.
+    Supports PDS4 Tables and Arrays.
 
     This function is not particularly fast, however it is designed to work
-    for all PDS4 data. Bit strings, however, are skipped because they cannot
-    be converted to plain text by definition.
+    for all PDS4 data.
 
     Parameters
     ----------
@@ -1004,12 +1002,28 @@ def _export_data(filename, data, delimiter=None, fmt=None, newline='\r\n'):
     """
 
     # Formats a single data value according to PDS4 field_format
-    def format_value(datum, format):
+    def format_value(datum, format, is_bitstring=False, dtype=None):
 
         if isinstance(datum, six.binary_type):
-            datum = datum.decode('utf-8')
 
+            # Handle bitstrings
+            # (Note: we ensure dtype has correct length; otherwise trailing null bytes are skipped by NumPy)
+            if is_bitstring:
+                datum_bytes = np.asarray(datum, dtype=dtype).tobytes()
+                datum = '0x' + binascii.hexlify(datum_bytes).decode('ascii').upper()
+
+            # Handle strings
+            else:
+                datum = datum.decode('utf-8')
+
+        # Format datum
         try:
+
+            # Convert from NumPy types into Python native types, otherwise the format statement below
+            # can return the format itself, when format is invalid, rather than raising an exception
+            if hasattr(datum, 'item'):
+                datum = datum.item()
+
             value = format % datum
         except (ValueError, TypeError):
             value = datum
@@ -1018,22 +1032,26 @@ def _export_data(filename, data, delimiter=None, fmt=None, newline='\r\n'):
 
     # Formats a NumPy ndarray to a string; similar to np.array2string's default functionality
     # but does not add newlines to deeply nested arrays
-    def format_array(array, format=None, _top_level=True):
+    def format_array(array, format, is_bitstring=False, dtype=None, _top_level=True):
 
-        formatter = lambda x: format_value(x, format)
+        kwargs = {'format': format,
+                  'is_bitstring': is_bitstring,
+                  'dtype': dtype}
 
         output = '['
         for value in array:
 
-            if value.ndim > 1:
-                output += format_array(value, format=format, _top_level=False)
+            if value.ndim == 0:
+
+                value = format_value(value, **kwargs)
+
+                if np.issubdtype(array.dtype, np.character):
+                    output += "'{0}' ".format(value)
+                else:
+                    output += "{0} ".format(value.strip())
 
             else:
-                raw_output = np.array2string(value,
-                                             formatter={'any': formatter},
-                                             max_line_width=np.inf)\
-                            .replace('[ ', '[').replace(' ]', ']')
-                output += format_value(raw_output, format) + ' '
+                output += format_array(value, _top_level=False, **kwargs)
 
         output = output[:-1] + '] '
 
@@ -1051,13 +1069,9 @@ def _export_data(filename, data, delimiter=None, fmt=None, newline='\r\n'):
 
         fields = [data[name] for name in data.dtype.names]
         bitstring_field_nums = [i for i, field in enumerate(fields)
-                                if 'BitString' in field.meta_data.get('data_type', 'none')]
+                                if field.meta_data.data_type().issubtype('BitString')]
         num_fields = len(fields)
-
-        if len(bitstring_field_nums) == num_fields:
-            raise ValueError('All fields in table are bit fields.')
-
-        last_field_num = sorted(set(range(0, num_fields)).difference(bitstring_field_nums))[-1]
+        last_field_num = num_fields-1
 
     else:
 
@@ -1077,7 +1091,17 @@ def _export_data(filename, data, delimiter=None, fmt=None, newline='\r\n'):
 
         # Obtain a list of formats for table fields
         if fmt is None:
-            formats = [value.meta_data.get('format', '%s') for value in fields]
+
+            formats = []
+            for field in fields:
+
+                # Skip formatting scaled/offset values, because the PDS4 Standard is ambiguous on whether
+                # field_format is pre- or post- scaling/offset. This can lead into incorrect formatting.
+                meta_data = field.meta_data
+                is_scaled = meta_data.get('scaling_factor', 1) != 1 or meta_data.get('value_offset', 0) != 0
+
+                format = '%s' if is_scaled else meta_data.get('format', '%s')
+                formats.append(format)
 
         elif isinstance(fmt, six.string_types) and fmt.lower() == 'none':
             formats = ['%s'] * fmt
@@ -1103,25 +1127,21 @@ def _export_data(filename, data, delimiter=None, fmt=None, newline='\r\n'):
 
             for field_num, value in enumerate(fields):
 
-                # Handle bit fields
-                if field_num in bitstring_field_nums:
-                    fixed_format = '-%s'
+                ndim = value.ndim
+                dtype = value.dtype
+                kwargs = {'format': formats[field_num],
+                          'dtype': dtype,
+                          'is_bitstring': field_num in bitstring_field_nums}
 
-                # Handle normal fields
+                if ndim > 1:
+                    value = [format_array(element, **kwargs) for element in value]
                 else:
+                    value = [format_value(element, **kwargs) for element in value]
 
-                    format = formats[field_num]
+                max_length = len(max(value, key=len))
+                sign = '-' if np.issubdtype(dtype, np.character) or (ndim > 1) else '+'
 
-                    if value.ndim > 1:
-                        value = [format_array(element, format) for element in value]
-                    else:
-                        value = [format_value(element, format) for element in value]
-
-                    max_length = len(max(value, key=len))
-                    sign = '-' if ('s' in format) else '+'
-
-                    fixed_format = '%{0}{1}s'.format(sign, max_length)
-
+                fixed_format = '%{0}{1}s'.format(sign, max_length)
                 fixed_formats.append(fixed_format)
 
     # Write exported output to file for arrays
@@ -1143,18 +1163,16 @@ def _export_data(filename, data, delimiter=None, fmt=None, newline='\r\n'):
 
                 for field_num, value in enumerate(record):
 
-                    # Skip bit fields
-                    if field_num in bitstring_field_nums:
-                        continue
-
                     # Format the value (either a scalar, or a group field) according to *fmt*
-                    format = formats[field_num]
+                    kwargs = {'format': formats[field_num],
+                              'dtype': fields[field_num].dtype,
+                              'is_bitstring': field_num in bitstring_field_nums}
 
                     if isinstance(value, np.ndarray):
-                        output_value = format_array(value, format)
+                        output_value = format_array(value, **kwargs)
 
                     else:
-                        output_value = format_value(value, format)
+                        output_value = format_value(value, **kwargs)
 
                     # For fixed-width tables, format the string-value to give the table its fixed width
                     if is_fixed_width:

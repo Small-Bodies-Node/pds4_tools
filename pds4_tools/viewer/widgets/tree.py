@@ -6,13 +6,8 @@ from __future__ import unicode_literals
 import textwrap
 import uuid
 
+from ...utils.compat import OrderedDict
 from ...extern import six
-
-# Safe import of OrderedDict
-try:
-    from collections import OrderedDict
-except ImportError:
-    from ...extern.ordered_dict import OrderedDict
 
 
 class TreeView(object):

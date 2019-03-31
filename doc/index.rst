@@ -12,8 +12,8 @@ Welcome to PDS4 Python Tools' documentation!
 
 
 
-:ref:`Release Notes <changes>`.
-|
+:ref:`Release Notes <changes>` for v1.1.
+
 |
 
 Reader

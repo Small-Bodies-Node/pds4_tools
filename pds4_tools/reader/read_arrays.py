@@ -47,7 +47,7 @@ def _read_array_byte_data(array_structure, as_string=True, memmap=False):
     meta_data = array_structure.meta_data
 
     num_elements = np.prod([axis_array['elements'] for axis_array in meta_data.get_axis_arrays()])
-    data_type = meta_data['Element_Array']['data_type']
+    data_type = meta_data.data_type()
     element_size = pds_to_numpy_type(data_type).itemsize
 
     start_byte = meta_data['offset']
@@ -184,8 +184,7 @@ def new_array(input, no_scale=False, no_bitmask=False, masked=None, copy=True, *
                                         'value_offset': element_array.get('value_offset')}
 
     # Obtain dtype (ensuring to scale it for future application of scaling and offset if necessary)
-    data_type = element_array['data_type']
-    dtype = pds_to_numpy_type(data_type, data=array, **scale_kwargs)
+    dtype = pds_to_numpy_type(meta_data.data_type(), data=array, **scale_kwargs)
 
     # Obtain shape
     array_shape = meta_data.dimensions()
@@ -227,14 +226,17 @@ def new_array(input, no_scale=False, no_bitmask=False, masked=None, copy=True, *
         # Mask Special_Constants in output if requested
         if masked:
             array = mask_special_constants(array, special_constants=special_constants)
-            array_structure.data.set_fill_value(array.fill_value)
 
         # Reshape array as necessary
         if len(array_shape) > 1:
             array = array.reshape(array_shape)
 
-        array_structure.data[:] = array
-        array_structure.data.meta_data = meta_data
+        # Assign data, and ensure data array is of requested type if it was already supplied
+        array_structure.data = array.view(array_type)
+
+        # Set correct fill value if our data is masked (necessary only on NumPy < v1.13)
+        if masked:
+            array_structure.data.set_fill_value(array.fill_value)
 
     return array_structure
 
@@ -263,8 +265,7 @@ def read_array_data(array_structure, no_scale, masked, memmap=False):
 
     # Obtain basic meta data
     meta_data = array_structure.meta_data
-    element_array = meta_data['Element_Array']
-    data_type = element_array['data_type']
+    data_type = meta_data.data_type()
 
     # Read the data in, and transform it to the necessary data type
     extracted_data = _read_array_byte_data(array_structure, as_string=False, memmap=memmap)

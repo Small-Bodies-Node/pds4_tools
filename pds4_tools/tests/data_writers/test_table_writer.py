@@ -66,6 +66,9 @@ ascii_base16 =  np.asarray(['      0FB8', '  ABC01FBE', 'dea111bacf'], dtype='ob
 ascii_string =  np.asarray([' Test string 1  ', ' Test  2        ', ' Test longest 3 '], dtype='object')
 utf8_string =   np.asarray([' Tést stríng 1  ', ' Tést  2         ', ' Tést longést 3 '], dtype='object')
 
+dates_ymd_utc   = ['2018-10-10T05:05Z       ', '2018-01-10T05:05:05.123Z', '2014Z                   ']
+dates_doy_local = ['2018-200', '2018-201', '2018-202']
+
 ascii_base16_overflow = np.asarray([' F16DA69029D6FBF6', '1FFFFFFFFFFFFFFFF', '40000000000000001'], dtype='object')
 ascii_base8_scaling_overflow = np.asarray(['7777777777777777777777', '7237737712377727777777', '7777737712377727777777'], dtype='object')
 ascii_base2_scaling_overflow = np.asarray(['1111111111111111', '1111011101110011', '      0001110101'], dtype='object')
@@ -86,6 +89,7 @@ binary_table = np.vstack((signed_byte, unsigned_byte,
 ascii_table = np.vstack((ascii_real, ascii_integer, ascii_nonnegative_integer, ascii_boolean,
                          ascii_base2, ascii_base8, ascii_base16,
                          ascii_string, utf8_string,
+                         dates_ymd_utc, dates_doy_local,
                          ascii_base16_overflow, ascii_base8_scaling_overflow, ascii_base2_scaling_overflow,
                          integer_scaling, integer_scaling)).transpose()
 

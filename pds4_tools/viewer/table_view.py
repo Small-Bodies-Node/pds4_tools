@@ -4,6 +4,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import platform
+import binascii
 import functools
 import numpy as np
 from math import ceil, floor
@@ -34,10 +35,13 @@ class TabularViewWindow(DataViewWindow):
     the table that it needs to display.
     """
 
-    def __init__(self, parent):
+    def __init__(self, viewer):
 
         # Create basic data view window
-        super(TabularViewWindow, self).__init__(parent)
+        super(TabularViewWindow, self).__init__(viewer)
+
+        # Will be set to the fields for the table structure
+        self.data = None
 
         # Pack the display frame, which contains the scrollbars and the scrollable canvas
         self._display_frame.pack(side='left', anchor='nw', expand=1, fill='both')
@@ -73,9 +77,9 @@ class TabularViewWindow(DataViewWindow):
         self._set_title("{0} - Table '{1}'".format(self._get_title(), table_structure.id))
 
         # Set necessary instance variables for this DataViewWindow
-        self.data = table_structure.fields
-        self.meta_data = table_structure.meta_data if hasattr(table_structure, 'meta_data') else None
         self.structure = table_structure
+        self.data = self.structure.fields
+        self.meta_data = table_structure.meta_data if hasattr(table_structure, 'meta_data') else None
         self._settings = {'num_rows': len(self.data[0]), 'num_columns': len(self.data),
                           'num_display_rows': 0, 'display_start_row': 0,
                           'num_display_cols': 0, 'display_start_col': 0}
@@ -102,7 +106,7 @@ class TabularViewWindow(DataViewWindow):
         label.pack(fill='both', expand=2)
 
         # Adds new menu options used for manipulating the data
-        self._add_menu()
+        self._add_menus()
 
         # Mark table as open, simulate window resizing to populate the window with the table's data
         self._data_open = True
@@ -117,20 +121,13 @@ class TabularViewWindow(DataViewWindow):
         self._update_vertical_table_display(self._vert_scrollbar.get())
 
     # Adds menu options used for manipulating the data display
-    def _add_menu(self):
-
-        # Adds an Export option to the File menu
-        # file_menu = self._menu.winfo_children()[0]
-        # file_menu.insert_separator(0)
-        # file_menu.insert_command(0, label='Export...', command=None)
+    def _add_menus(self):
 
         # Add an Options menu
-        options_menu = Menu(self._menu, tearoff=0)
-        self._menu.insert_cascade(2, label='Options', menu=options_menu)
+        options_menu = self._add_menu('Options', in_menu='main', index=2)
 
         # Add a Data Formatting sub-menu to the Options menu
-        formatting_menu = Menu(options_menu, tearoff=0)
-        options_menu.add_cascade(label='Data formatting', menu=formatting_menu)
+        formatting_menu = self._add_menu('Data formatting', in_menu='Options')
 
         formatting_menu.add_checkbutton(label='Use field format', onvalue=True, offvalue=False,
                                         variable=self._menu_options['display_data_as_formatted'])
@@ -301,11 +298,16 @@ class TabularViewWindow(DataViewWindow):
             if is_array_like(data_point) and len(data_point) == 1:
                 data_point = data_point[0]
 
+            # Output bit strings as hex values.
+            # Note: we ensure dtype has correct length; otherwise trailing null bytes are skipped by NumPy
+            if meta_data.data_type().issubtype('BitString'):
+                data_point_bytes = np.asarray(data_point, dtype=field.dtype).tobytes()
+                data_point = '0x' + binascii.hexlify(data_point_bytes).decode('ascii').upper()
+
             # Decode byte strings to unicode strings. Done because byte strings with UTF-8 characters cannot be
             # properly formatted, and so that on Python 2 the warning below does not error out if a non-ASCII
             # data value was not able to be formatted.
-            is_bitstring_data = 'BitString' in meta_data.get('data_type', 'none')
-            if isinstance(data_point, six.binary_type) and (not is_bitstring_data):
+            elif isinstance(data_point, six.binary_type):
                 data_point = data_point.decode('utf-8')
 
             # Set display values for data points
@@ -316,9 +318,19 @@ class TabularViewWindow(DataViewWindow):
                 # Format scalar value
                 if self.menu_option('display_data_as_formatted'):
 
+                    # Skip formatting scaled/offset values, because the PDS4 Standard is ambiguous on whether
+                    # field_format is pre- or post- scaling/offset. This can lead into incorrect formatting.
+                    is_scaled = meta_data.get('scaling_factor', 1) != 1 or meta_data.get('value_offset', 0) != 0
+
                     try:
 
-                        if 'format' in meta_data:
+                        if ('format' in meta_data) and (not is_scaled):
+
+                            # Convert from NumPy types into Python native types, otherwise the format statement below
+                            # can return the format itself, when format is invalid, rather than raising an exception.
+                            if hasattr(data_point, 'item'):
+                                data_point = data_point.item()
+
                             data_point = meta_data['format'] % data_point
 
                     except (ValueError, TypeError):
@@ -679,6 +691,11 @@ class TabularViewWindow(DataViewWindow):
         # Adjusts scrollbar length based on new number of rows and columns being displayed
         self._set_scrollbar_length(num_display_rows, num_display_cols)
 
+    def close(self):
+
+        self.data = None
+        super(TabularViewWindow, self).close()
+
 
 class FieldDefinitionToolTip(ToolTip):
     """ A tooltip that pops up on mouse-over of Field name and shows its meta data. """
@@ -704,9 +721,7 @@ class FieldDefinitionToolTip(ToolTip):
         # Adds `count` method to Text widget, which is broken in Python 2
         def count_bugfix(self, index1, index2, *args):
             args = [self._w, "count"] + ["-" + arg for arg in args] + [index1, index2]
-
-            result = self.tk.call(*args)
-            return result
+            return self.tk.call(*args)
 
         Text.count = count_bugfix
 

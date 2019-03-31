@@ -10,6 +10,7 @@ from xml.etree import ElementTree as ET
 from .read_label import read_label
 from .general_objects import Meta_Class
 
+from ..utils import compat
 from ..utils.constants import PDS4_NAMESPACES, PDS4_DATA_FILE_AREAS
 from ..utils.helpers import xml_to_dict
 from ..utils.logging import logger_init
@@ -731,14 +732,14 @@ class Label(object):
         # Loop over all elements in root of element to find its number
         node_number = -1
 
-        for i, child_elem in enumerate(root.getiterator()):
+        for i, child_elem in enumerate(compat.ET_Element_iter(root)):
 
             if element == child_elem:
                 node_number = i
                 break
 
         # Loop over all elements of other_root to find the matching node_number
-        for i, child_elem in enumerate(other_root.getiterator()):
+        for i, child_elem in enumerate(compat.ET_Element_iter(other_root)):
 
             if i == node_number:
                 other_element = child_elem
@@ -860,15 +861,15 @@ class Label(object):
         .//{http://pds.nasa.gov/pds4/disp/v1}Display_Settings
         """
 
-        xpath_tokenizer_re = re.compile("("
-                                        "'[^']*'|\"[^\"]*\"|"
-                                        "::|"
-                                        "//?|"
-                                        "\.\.|"
-                                        "\(\)|"
-                                        "[/.*:\[\]\(\)@=])|"
-                                        "((?:\{[^}]+\})?[^/\[\]\(\)@=\s]+)|"
-                                        "\s+")
+        xpath_tokenizer_re = re.compile(r"("
+                                        r"'[^']*'|\"[^\"]*\"|"
+                                        r"::|"
+                                        r"//?|"
+                                        r"\.\.|"
+                                        r"\(\)|"
+                                        r"[/.*:\[\]\(\)@=])|"
+                                        r"((?:\{[^}]+\})?[^/\[\]\(\)@=\s]+)|"
+                                        r"\s+")
         modified_match = ''
 
         for token in xpath_tokenizer_re.findall(match):

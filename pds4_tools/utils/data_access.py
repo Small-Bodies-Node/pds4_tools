@@ -12,6 +12,13 @@ from ..utils.logging import logger_init
 from ..extern import six
 from ..extern.six.moves import urllib
 
+# Safe import of Certifi
+try:
+    import certifi
+except ImportError:
+    certifi = None
+
+
 # Initialize the logger
 logger = logger_init()
 
@@ -82,10 +89,18 @@ def download_file(url, force=False, block_size=65536, timeout=10):
 
         logger.info('Downloading URL: {0} ... '.format(url_original), end='')
 
+        # Use Certifi where available (avoids SSL verification errors on older platforms and some architectures)
+        cafile = None if (certifi is None) else certifi.where()
+
         # Open the connection to remote URL (should not download content)
         try:
+            remote = urllib.request.urlopen(url, timeout=timeout, cafile=cafile)
+
+        # CA File available from Python 2.7.9+
+        except TypeError:
             remote = urllib.request.urlopen(url, timeout=timeout)
 
+        # Improve error message for unexpected errors
         except urllib.error.URLError as e:
 
             try:

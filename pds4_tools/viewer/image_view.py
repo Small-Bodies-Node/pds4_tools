@@ -7,17 +7,18 @@ import math
 import os
 import weakref
 import platform
+import warnings
 from fractions import Fraction
 
 import numpy as np
 import matplotlib as mpl
-from matplotlib.backends.backend_tkagg import NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
 
 from . import cache
 from .core import Window, DataViewWindow
-from .mpl import FigureCanvas
+from .mpl import FigureCanvas, MPLCompat
 
+from ..utils.compat import OrderedDict
 from ..utils.helpers import finite_min_max, is_array_like
 from ..utils.exceptions import PDS4StandardsException
 from ..utils.logging import logger_init
@@ -27,19 +28,6 @@ from ..extern import six
 from ..extern.six.moves.tkinter import (Menu, Frame, Scrollbar, Label, Entry, Scale, Button,
                                           Radiobutton, StringVar, BooleanVar, DoubleVar, IntVar)
 from ..extern.six.moves.tkinter_tkfiledialog import asksaveasfilename
-
-# Safe import of OrderedDict
-try:
-    from collections import OrderedDict
-except ImportError:
-    from ..extern.ordered_dict import OrderedDict
-
-# Safe import of PowerNorm (available in MPL v1.4+)
-try:
-    from matplotlib.colors import PowerNorm
-
-except ImportError:
-    PowerNorm = None
 
 # Initialize the logger
 logger = logger_init()
@@ -54,10 +42,10 @@ class ImageViewWindow(DataViewWindow):
     the array that it needs to display.
     """
 
-    def __init__(self, parent):
+    def __init__(self, viewer):
 
         # Create basic data view window
-        super(ImageViewWindow, self).__init__(parent)
+        super(ImageViewWindow, self).__init__(viewer)
 
         # Pack the display frame, which contains the scrollbars and the scrollable canvas
         self._display_frame.pack(side='left', anchor='nw', expand=1, fill='both')
@@ -81,6 +69,10 @@ class ImageViewWindow(DataViewWindow):
         # Will be set to an instance of MPL's toolbar for TK
         self._toolbar = None
 
+        # Will be set to the masked data array for the structure if it has masked values
+        # (used to minimize operations)
+        self._masked_data = None
+
         # Will be set to the data for the current slice/image being shown
         self._slice_data = None
 
@@ -90,24 +82,27 @@ class ImageViewWindow(DataViewWindow):
         # Menu option variables. These are TKinter type wrappers around standard Python variables. The
         # advantage is that you can use trace(func) on them, to automatically call func whenever one of
         # these variables is changed
+        draw_slice = lambda * args: self._draw_slice()
         update_colorbar = lambda *args: self._update_colorbar(full_redraw=True)
         update_invert_axis = lambda *args: self._update_invert_axis(has_default_orientation=False)
         update_tick_labels = lambda *args: self._update_tick_labels(for_save=False)
 
         menu_options = [
-            {'name': 'show_colorbar',   'type': BooleanVar(), 'default': True,         'trace': self.toggle_colorbar},
-            {'name': 'colorbar_orient', 'type': StringVar(),  'default': 'horizontal', 'trace': update_colorbar},
-            {'name': 'colormap',        'type': StringVar(),  'default': 'gray',       'trace': self._update_colormap},
-            {'name': 'invert_colormap', 'type': BooleanVar(), 'default': False,        'trace': self._update_colormap},
-            {'name': 'show_border',     'type': BooleanVar(), 'default': False,        'trace': update_tick_labels},
-            {'name': 'show_axis_ticks', 'type': StringVar(),  'default': 'none',       'trace': update_tick_labels},
-            {'name': 'scale',           'type': StringVar(),  'default': 'linear',     'trace': self._update_scale},
-            {'name': 'scale_limits',    'type': StringVar(),  'default': 'min max',    'trace': self._update_scale},
-            {'name': 'zoom_level',      'type': DoubleVar(),  'default': 1,            'trace': self._update_zoom},
-            {'name': 'invert_axis',     'type': StringVar(),  'default': 'none',       'trace': update_invert_axis},
-            {'name': 'rotation_angle',  'type': DoubleVar(),  'default': 0,            'trace': self._update_rotation},
-            {'name': 'orientation',     'type': StringVar(),  'default': 'display',    'trace': self._update_orientation},
-            {'name': 'pan',             'type': BooleanVar(), 'default': False,        'trace': self._pan},
+            {'name': 'show_colorbar',    'type': BooleanVar(), 'default': True,         'trace': self.toggle_colorbar},
+            {'name': 'colorbar_orient',  'type': StringVar(),  'default': 'horizontal', 'trace': update_colorbar},
+            {'name': 'colormap',         'type': StringVar(),  'default': 'gray',       'trace': self._update_colormap},
+            {'name': 'invert_colormap',  'type': BooleanVar(), 'default': False,        'trace': self._update_colormap},
+            {'name': 'show_border',      'type': BooleanVar(), 'default': False,        'trace': update_tick_labels},
+            {'name': 'show_axis_ticks',  'type': StringVar(),  'default': 'none',       'trace': update_tick_labels},
+            {'name': 'scale',            'type': StringVar(),  'default': 'linear',     'trace': self._update_scale},
+            {'name': 'scale_limits',     'type': StringVar(),  'default': 'min max',    'trace': self._update_scale},
+            {'name': 'mask_special',     'type': BooleanVar(), 'default': True,         'trace': draw_slice},
+            {'name': 'zoom_level',       'type': StringVar(),  'default': '1,1',        'trace': self._update_zoom},
+            {'name': 'mode',             'type': StringVar(),  'default': 'image',      'trace': self._update_mode},
+            {'name': 'invert_axis',      'type': StringVar(),  'default': 'none',       'trace': update_invert_axis},
+            {'name': 'rotation_angle',   'type': DoubleVar(),  'default': 0,            'trace': self._update_rotation},
+            {'name': 'orientation',      'type': StringVar(),  'default': 'display',    'trace': self._update_orientation},
+            {'name': 'pan',              'type': BooleanVar(), 'default': False,        'trace': self._pan},
             {'name': 'axis_limits_to_rectangle', 'type': BooleanVar(), 'default': False, 'trace': self._axis_limits_to_rectangle}
         ]
 
@@ -126,6 +121,25 @@ class ImageViewWindow(DataViewWindow):
 
         return settings
 
+    @property
+    def data(self):
+
+        has_special = 'Special_Constants' in self.meta_data
+        mask_special = self.menu_option('mask_special')
+        not_rgb = not self.settings['is_rgb']
+
+        if has_special and mask_special and not_rgb:
+
+            if self._masked_data is None:
+                self._masked_data = self.structure.as_masked().data
+
+            data = self._masked_data
+
+        else:
+            data = self.structure.data
+
+        return data
+
     # Loads the image array structure into this window and displays it for the user
     def load_array(self, array_structure):
 
@@ -133,9 +147,8 @@ class ImageViewWindow(DataViewWindow):
         self._set_title("{0} - Image '{1}'".format(self._get_title(), array_structure.id))
 
         # Set necessary instance variables for this DataViewWindow
-        self.data = array_structure.data
-        self.meta_data = array_structure.meta_data
         self.structure = array_structure
+        self.meta_data = array_structure.meta_data
         self._settings = {'dpi': 80., 'axes': _AxesProperties(), 'selected_axis': 0,
                           'is_rgb': False, 'rgb_bands': (None, None, None)}
 
@@ -184,6 +197,9 @@ class ImageViewWindow(DataViewWindow):
         # Draw the slice/image on the screen
         self._draw_slice()
 
+        # Default to array-mode for extreme aspect ratios (i.e. do not respect image aspect ratio)
+        self.set_mode()
+
         # Add notify event for window resizing
         self._display_frame.bind('<Configure>', self._window_resize)
 
@@ -197,8 +213,18 @@ class ImageViewWindow(DataViewWindow):
         # Add notify event for mouse motion (used to display pixel values under pointer)
         self._figure_canvas.mpl_canvas.mpl_connect('motion_notify_event', self._update_mouse_pixel_value)
 
-        self._add_menu()
+        self._add_menus()
         self._data_open = True
+
+    # Get zoom level, as (zoom_width, zoom_height)
+    def get_zoom_level(self):
+
+        zoom = self.menu_option('zoom_level')
+
+        fractions = map(Fraction, zoom.split(','))
+        zoom_level = map(float, fractions)
+
+        return list(zoom_level)
 
     # Sets colormap on currently displayed image
     def set_colormap(self, colormap):
@@ -244,8 +270,7 @@ class ImageViewWindow(DataViewWindow):
             self._draw_slice()
 
     # Controls scaling for the currently displayed slice. scale can have values linear|log|squared|square root,
-    # and limits can have values min max|zscale, or a string with format 'min,max'. To keep existing values
-    # use None.
+    # and limits can have values min max|zscale, or a tuple (min, max). To keep existing values use None.
     def set_scale(self, scale=None, limits=None):
 
         # Freeze the display temporarily so image is not needlessly re-drawn multiple times
@@ -255,15 +280,44 @@ class ImageViewWindow(DataViewWindow):
             self._menu_options['scale'].set(scale)
 
         if limits is not None:
+
+            # Convert to storable input (which has format 'limit_low,limit_high' as a string)
+            if is_array_like(limits):
+                limits = ','.join([str(level) for level in limits])
+
             self._menu_options['scale_limits'].set(limits)
 
         # Thaw the display
         self.thaw_display()
 
-    # Zooms in on the initial image dimensions by zoom_level (e.g. zoom_level of 2 will double the dimensions
-    # of the original image)
-    def set_zoom(self, zoom_level):
+    # Zooms in on the initial image dimensions by zoom_level. Can be tuple (zoom_width, zoom_height) to
+    # specify an aspect ratio. (e.g. a zoom_level of 2 will double the dimensions of the original image).
+    def set_zoom(self, zoom_level, mode=None):
+
+        # Accept single-value zoom-levels (i.e. aspect ratio of 1)
+        if isinstance(zoom_level, (int, float)):
+            zoom_level = [zoom_level] * 2
+
+        # Ensure *zoom_level* and mode are compatible
+        new_mode = self.menu_option('mode') if (mode is None) else mode
+        if (new_mode == 'image') and (zoom_level[0] != zoom_level[1]):
+            raise ValueError('Zoom conflict: mode is set to image, but zoom aspect ratio is not 1.')
+
+        # Freeze the display temporarily so image is not needlessly re-drawn multiple times
+        self.freeze_display()
+
+        # Update mode (if requested)
+        if mode is not None:
+            self.set_mode(mode)
+
+        # Convert to storable input (which has format 'zoom_width,zoom_height' as a string)
+        zoom_level = '{0},{1}'.format(*zoom_level)
+
+        # Set zoom
         self._menu_options['zoom_level'].set(zoom_level)
+
+        # Thaw the display, since it was frozen above
+        self.thaw_display()
 
     # Rotates currently displayed slice to rotation_angle from initial orientation, in degrees. Note that
     # rotation angle must be evenly divisible by 90.
@@ -275,6 +329,31 @@ class ImageViewWindow(DataViewWindow):
     # order
     def set_orientation(self, orientation):
         self._menu_options['orientation'].set(orientation)
+
+    # Set the current mode, one of image|array|manual. In image mode, we update aspect ratio to match the original
+    # image (by zooming to level 1) if it does not already match. In array mode, we simply fit the image to screen
+    # without preserving the aspect ratio. In manual mode, the set zoom level and aspect ratio are preserved except
+    # when explicitly changed.
+    def set_mode(self, mode=None):
+
+        # Default to array-mode for extreme aspect ratios (i.e. do not respect image aspect ratio)
+        is_generic_array = not any(item in self.structure.type for item in ('Image', 'Map', 'Movie'))
+        if is_generic_array and (mode is None):
+
+            axes = self._settings['axes']
+            vertical_shape = axes.find('type', 'vertical')['length']
+            horizontal_shape = axes.find('type', 'horizontal')['length']
+            aspect_ratio = horizontal_shape / vertical_shape
+
+            if (aspect_ratio > 20) or (aspect_ratio < 1 / 20):
+                mode = 'array'
+
+        # When mode is not explicitly set, or aspect ratio is not extreme, default to image mode
+        if mode is None:
+            mode = 'image'
+
+        # Update whether aspect is constrained to match original image's
+        self._menu_options['mode'].set(mode)
 
     # Controls axes display for current image. show_axis and invert_axis can have values x|y|both|none.
     # show_border is a boolean that controls whether a border is displayed around image. To keep existing
@@ -293,11 +372,19 @@ class ImageViewWindow(DataViewWindow):
     # Zooms the image, via resampling, to fit the current window
     def zoom_to_fit(self):
 
+        # Having correct figure dimensions is needed to determine the area to fit into
+        self._update_figure_dimensions()
+
         # Available viewing area for image
         display_width, display_height = self._display_dimensions()
 
         # Unzoomed size of the image
         image_width, image_height = self._image_dimensions(zoom_level=1)
+
+        # Obtain the mode and old aspect ratio
+        mode = self.menu_option('mode')
+        old_zoom = self.get_zoom_level()
+        old_aspect = min(old_zoom) / max(old_zoom)
 
         # Determine the maximum zoom level possible before image will not fit in frame
         # (we run this twice to determine an accurate margin dimension, which is dependent on being
@@ -311,21 +398,33 @@ class ImageViewWindow(DataViewWindow):
             fig_size_div = ((display_width - margin_width) / image_width,
                             (display_height - margin_height) / image_height)
 
-            zoom_level = min(fig_size_div)
+            # Maintain aspect ratio identical to original image in image-mode
+            if mode == 'image':
+                zoom_level = min(fig_size_div)
+
+            # Ignore aspect ratio of original image in array-mode
+            elif mode == 'array':
+                zoom_level = fig_size_div
+
+            # Keep current aspect ratio for manual-mode
+            else:
+
+                if old_zoom[0] < old_zoom[1]:
+                    zoom_level = [max(fig_size_div)*old_aspect, max(fig_size_div)]
+                else:
+                    zoom_level = [min(fig_size_div), min(fig_size_div)*old_aspect]
 
         self._zoom(zoom_level=zoom_level)
 
-    # Sets the horizontal and vertical axes to be used for each slice. The values must be the integer
-    # sequence_number of the Axis_Array, or None, which defaults to the display settings values.
-    def set_slice_axes(self, horizontal_axis=None, vertical_axis=None):
+    # Sets the axes to be used for each slice. The values must be the integer sequence_number of the Axis_Array, or
+    # None, which defaults to the display settings values. For color and time axis, 'none' is also acceptable and
+    # forces that axis to be treated as a non-specified.
+    def set_slice_axes(self, horizontal_axis=None, vertical_axis=None, color_axis=None, time_axis=None):
 
         meta_data = self.meta_data
         display_settings = meta_data.display_settings
         invalid_display_settings = (not display_settings) or (not display_settings.valid)
         axis_arrays = meta_data.get_axis_arrays(sort=True)
-
-        time_axis = None
-        color_axis = None
 
         # In case of non-existent or invalid DisplaySettings
         if invalid_display_settings and (horizontal_axis is None or vertical_axis is None):
@@ -371,11 +470,11 @@ class ImageViewWindow(DataViewWindow):
                 vertical_name = display_direction['vertical_display_axis']
                 vertical_axis = meta_data.get_axis_array(axis_name=vertical_name)['sequence_number']
 
-            if color_settings is not None:
+            if (color_axis is None) and (color_settings is not None):
                 color_name = color_settings['color_display_axis']
                 color_axis = meta_data.get_axis_array(axis_name=color_name)['sequence_number']
 
-            if movie_settings is not None:
+            if (time_axis is None) and (movie_settings is not None):
                 time_name = movie_settings['time_display_axis']
                 time_axis = meta_data.get_axis_array(axis_name=time_name)['sequence_number']
 
@@ -388,6 +487,14 @@ class ImageViewWindow(DataViewWindow):
                 vertical_axis = min(saved_axes)
                 horizontal_axis = max(saved_axes)
 
+        # Force color and/or time axis to none if requested
+        if color_axis is 'none':
+            color_axis = None
+
+        if time_axis is 'none':
+            time_axis = None
+
+        # Obtain sequence number corresponding to each axis
         type_to_number = {
             'horizontal': horizontal_axis,
             'vertical': vertical_axis,
@@ -443,10 +550,11 @@ class ImageViewWindow(DataViewWindow):
     def select_slice(self, axis=None, index=None):
 
         settings = self._settings
+        cmap = self.menu_option('colormap')
         axes = settings['axes']
 
-        # Skip any action if there are only two axes (horizontal and vertical)
-        if len(axes) == 2:
+        # Skip any action if there are only two axes (horizontal and vertical), or in RGB colormap mode
+        if (len(axes) == 2) or (cmap == 'RGB'):
             return
 
         # Select currently selected axis by default
@@ -600,6 +708,7 @@ class ImageViewWindow(DataViewWindow):
         self.freeze_display()
 
         self._zoom(zoom_level=1)
+        self.set_mode()
         self.set_axes_display(invert_axis='none')
         self.set_rotation(0)
 
@@ -635,20 +744,15 @@ class ImageViewWindow(DataViewWindow):
                 self._figure_canvas.thaw()
 
     # Adds menu options used for manipulating the data display
-    def _add_menu(self):
+    def _add_menus(self):
 
-        # Adds an Export sub-menu to the File menu
-        file_menu = self._menu.winfo_children()[0]
-        # export_menu = Menu(file_menu)
-
-        # file_menu.insert_cascade(0, label='Export', menu=export_menu)
+        # Add options to the File menu
+        file_menu = self._menu('File')
         file_menu.insert_command(0, label='Save Image', command=self._save_file_box)
-
         file_menu.insert_separator(1)
 
         # Add a Frame menu
-        frame_menu = Menu(self._menu, tearoff=0)
-        self._menu.add_cascade(label='Frame', menu=frame_menu)
+        frame_menu = self._add_menu('Frame', in_menu='main')
 
         frame_menu.add_command(label='Data Cube', command=
                                lambda: self._add_dependent_window(DataCubeWindow(self._viewer, self)))
@@ -659,68 +763,10 @@ class ImageViewWindow(DataViewWindow):
         frame_menu.add_command(label='Previous Frame', command=lambda: self.select_slice(index='previous'))
 
         # Add a Zoom menu
-        zoom_menu = Menu(self._menu, tearoff=0)
-        self._menu.add_cascade(label='Zoom', menu=zoom_menu)
-
-        zoom_menu.add_command(label='Reset Original View', command=self.reset_view)
-
-        zoom_menu.add_separator()
-
-        zoom_menu.add_command(label='Zoom to Fit', command=self.zoom_to_fit)
-
-        zoom_menu.add_separator()
-
-        zoom_menu.add_checkbutton(label='Pan', onvalue=True, offvalue=False, variable=self._menu_options['pan'])
-        zoom_menu.add_checkbutton(label='Axis-Limits to Rectangle', onvalue=True, offvalue=False,
-                                  variable=self._menu_options['axis_limits_to_rectangle'])
-
-        zoom_menu.add_separator()
-
-        zoom_menu.add_command(label='Zoom In', command=lambda: self._zoom('in'))
-        zoom_menu.add_command(label='Zoom Out', command=lambda: self._zoom('out'))
-
-        zoom_menu.add_separator()
-
-        zoom_levels = (1./32, 1./16, 1./8, 1./4, 1./2, 1, 2, 4, 8, 16, 32)
-
-        for level in zoom_levels:
-            label = 'Zoom {0}'.format(Fraction.from_float(level))
-            zoom_menu.add_checkbutton(label=label, onvalue=level, offvalue=level,
-                                      variable=self._menu_options['zoom_level'])
-
-        zoom_menu.add_separator()
-
-        invert_options = OrderedDict([('None', 'none'), ('Invert X', 'x'),
-                                      ('Invert Y', 'y'), ('Invert XY', 'both')])
-        for label, option in six.iteritems(invert_options):
-
-            zoom_menu.add_checkbutton(label=label, onvalue=option, offvalue=option,
-                                      variable=self._menu_options['invert_axis'])
-
-        zoom_menu.add_separator()
-
-        rotation_angles = (0, 90, 180, 270)
-
-        for angle in rotation_angles:
-            label = '{0} Degrees'.format(angle)
-            zoom_menu.add_checkbutton(label=label, onvalue=angle, offvalue=angle,
-                                      variable=self._menu_options['rotation_angle'])
-
-        zoom_menu.add_separator()
-
-        valid_display_settings = self.meta_data.display_settings and self.meta_data.display_settings.valid
-        has_2_axes = self.meta_data.num_axes() == 2
-        disable_display_orient = {} if valid_display_settings else {'state': 'disabled'}
-        disable_storage_orient = {} if (has_2_axes or not valid_display_settings) else {'state': 'disabled'}
-
-        zoom_menu.add_checkbutton(label='Display Orientation', onvalue='display', offvalue='display',
-                                  variable=self._menu_options['orientation'], **disable_display_orient)
-        zoom_menu.add_checkbutton(label='Storage Orientation', onvalue='storage', offvalue='storage',
-                                  variable=self._menu_options['orientation'], **disable_storage_orient)
+        zoom_menu = self._add_menu('Zoom', in_menu='main', postcommand=self._update_zoom_menu)
 
         # Add a Scale menu
-        scale_menu = Menu(self._menu, tearoff=0)
-        self._menu.add_cascade(label='Scale', menu=scale_menu)
+        scale_menu = self._add_menu('Scale', in_menu='main')
 
         scale_types = ('linear', 'log', 'squared', 'square root')
 
@@ -729,7 +775,7 @@ class ImageViewWindow(DataViewWindow):
             # PowerNorm is an MPL feature available in MPL v1.4+ only
             disable_powernorm = {}
 
-            if (PowerNorm is None) and (scale in ('squared', 'square root')):
+            if (MPLCompat.PowerNorm is None) and (scale in ('squared', 'square root')):
                 disable_powernorm = {'state': 'disabled'}
 
             scale_menu.add_checkbutton(label=scale.title(), onvalue=scale, offvalue=scale,
@@ -745,12 +791,20 @@ class ImageViewWindow(DataViewWindow):
 
         scale_menu.add_separator()
 
+        disable_mask_sp = {'onvalue': True}
+        if not np.ma.is_masked(self.data):
+            disable_mask_sp = {'onvalue': False, 'state': 'disabled'}
+
+        scale_menu.add_checkbutton(label='Mask Special Constants', offvalue=False,
+                                   variable=self._menu_options['mask_special'], **disable_mask_sp)
+
+        scale_menu.add_separator()
+
         scale_menu.add_command(label='Scale Parameters...', command=lambda: self._add_dependent_window(
                 ScaleParametersWindow(self._viewer, self, self._image)))
 
         # Add a Color menu
-        color_menu = Menu(self._menu, tearoff=0)
-        self._menu.add_cascade(label='Color', menu=color_menu)
+        color_menu = self._add_menu('Color', in_menu='main')
 
         colormaps = ('gray', 'Reds', 'Greens', 'Blues', 'hot', 'afmhot', 'gist_heat', 'cool', 'coolwarm',
                      'jet', 'rainbow', 'hsv')
@@ -770,8 +824,7 @@ class ImageViewWindow(DataViewWindow):
         color_menu.add_separator()
 
         # Add an All Colors sub-menu to the Color menu
-        all_colors_menu = Menu(self._menu, tearoff=0)
-        color_menu.add_cascade(label='All Colors', menu=all_colors_menu)
+        all_colors_menu = self._add_menu('All Colors', in_menu='Color')
 
         all_colormaps = [m for m in mpl.cm.datad if not m.endswith('_r')]
 
@@ -787,15 +840,13 @@ class ImageViewWindow(DataViewWindow):
         color_menu.add_separator()
 
         # Add a Colorbar sub-menu to the Color menu
-        colorbar_menu = Menu(color_menu, tearoff=0)
-        color_menu.add_cascade(label='Colorbar', menu=colorbar_menu)
+        colorbar_menu = self._add_menu('Colorbar', in_menu='Color')
 
         colorbar_menu.add_checkbutton(label='Show', onvalue=True, offvalue=False,
                                       variable=self._menu_options['show_colorbar'])
 
         # Add a Colorbar orientation sub-menu to the Colorbar menu
-        colorbar_orient_menu = Menu(color_menu, tearoff=0)
-        colorbar_menu.add_cascade(label='Orientation', menu=colorbar_orient_menu)
+        colorbar_orient_menu = self._add_menu('Orientation', in_menu=('Color', 'Colorbar'))
 
         orientations = ('vertical', 'horizontal')
 
@@ -805,15 +856,15 @@ class ImageViewWindow(DataViewWindow):
                                                  variable=self._menu_options['colorbar_orient'])
 
         # Add a View menu
-        view_menu = self._add_view_menu()
+        self._add_view_menu()
+        view_menu = self._menu('View')
         view_menu.add_separator()
 
         view_menu.add_checkbutton(label='Show Image Border', onvalue=True, offvalue=False,
                                   variable=self._menu_options['show_border'])
 
         # Add a Ticks sub-menu to the View Menu
-        ticks_menu = Menu(view_menu, tearoff=0)
-        view_menu.add_cascade(label='Ticks', menu=ticks_menu)
+        ticks_menu = self._add_menu('Ticks', in_menu='View')
 
         show_ticks = OrderedDict([('X', 'x'), ('Y', 'y'), ('XY', 'both')])
         for label, option in six.iteritems(show_ticks):
@@ -821,7 +872,91 @@ class ImageViewWindow(DataViewWindow):
                                        offvalue='none', variable=self._menu_options['show_axis_ticks'])
 
         # Add a Colorbar sub-menu to the View menu
-        view_menu.add_cascade(label='Colorbar', menu=colorbar_menu)
+        self._add_menu('Colorbar', in_menu='View', existing_menu=colorbar_menu)
+
+    # Adds or updates menu options for the Zoom menu
+    def _update_zoom_menu(self):
+
+        zoom_menu = self._menu('Zoom')
+
+        # Delete all items in the menu
+        zoom_menu.delete(0, zoom_menu.index('last'))
+
+        # Re-add all items in the menu
+        zoom_menu.add_command(label='Reset Original View', command=self.reset_view)
+
+        zoom_menu.add_separator()
+
+        zoom_menu.add_command(label='Zoom to Fit', command=self.zoom_to_fit)
+
+        zoom_menu.add_separator()
+
+        zoom_menu.add_checkbutton(label='Pan', onvalue=True, offvalue=False, variable=self._menu_options['pan'])
+        zoom_menu.add_checkbutton(label='Axis-Limits to Rectangle', onvalue=True, offvalue=False,
+                                  variable=self._menu_options['axis_limits_to_rectangle'])
+
+        zoom_menu.add_separator()
+
+        zoom_menu.add_command(label='Zoom In', command=lambda: self._zoom('in'))
+        zoom_menu.add_command(label='Zoom Out', command=lambda: self._zoom('out'))
+
+        zoom_menu.add_separator()
+
+        # Zoom options
+        zoom_opts = {} if self.menu_option('mode') == 'image' else {'state': 'disabled'}
+        zoom_levels = ('1/32', '1/16', '1/8', '1/4', '1/2', '1', '2', '4', '8', '16', '32')
+
+        for level in zoom_levels:
+            label = 'Zoom {0}'.format(level)
+            level = '{0},{0}'.format(level)
+
+            zoom_menu.add_checkbutton(label=label, onvalue=level, offvalue=level,
+                                            variable=self._menu_options['zoom_level'], **zoom_opts)
+
+        zoom_menu.add_separator()
+
+        # Aspect Ratio options
+        zoom_menu.add_checkbutton(label='Image Mode', onvalue='image', offvalue='image',
+                                  variable=self._menu_options['mode'])
+
+        zoom_menu.add_checkbutton(label='Array Mode', onvalue='array', offvalue='array',
+                                  variable=self._menu_options['mode'])
+
+        zoom_menu.add_command(label='Manual Aspect Ratio', command=lambda: self._add_dependent_window(
+                                                                    ZoomPropertiesWindow(self._viewer, self)))
+
+        zoom_menu.add_separator()
+
+        # Image Invert options
+        invert_options = OrderedDict([('None', 'none'), ('Invert X', 'x'),
+                                      ('Invert Y', 'y'), ('Invert XY', 'both')])
+        for label, option in six.iteritems(invert_options):
+
+            zoom_menu.add_checkbutton(label=label, onvalue=option, offvalue=option,
+                                            variable=self._menu_options['invert_axis'])
+
+        zoom_menu.add_separator()
+
+        # Image Rotation options
+        rotation_angles = (0, 90, 180, 270)
+
+        for angle in rotation_angles:
+            label = '{0} Degrees'.format(angle)
+            zoom_menu.add_checkbutton(label=label, onvalue=angle, offvalue=angle,
+                                            variable=self._menu_options['rotation_angle'])
+
+        zoom_menu.add_separator()
+
+        # Orientation Options (i.e. whether to use Display_Settings)
+        valid_display_settings = self.meta_data.display_settings and self.meta_data.display_settings.valid
+        has_2_axes = self.meta_data.num_axes() == 2
+        display_opts = {} if valid_display_settings else {'state': 'disabled'}
+        storage_opts = {} if (has_2_axes or not valid_display_settings) else {'state': 'disabled'}
+
+        zoom_menu.add_checkbutton(label='Display Orientation', onvalue='display', offvalue='display',
+                                        variable=self._menu_options['orientation'], **display_opts)
+        zoom_menu.add_checkbutton(label='Storage Orientation', onvalue='storage', offvalue='storage',
+                                        variable=self._menu_options['orientation'], **storage_opts)
 
     # Draws the header box, which contains the name of the structure, the current frame, the pixel location
     # that the mouse pointer is over and that pixel's value
@@ -936,6 +1071,10 @@ class ImageViewWindow(DataViewWindow):
         # Get the new slice data to show
         self._slice_data = self._get_slice_data(update=True)
 
+        # We typically use weakref to pass data into MPL because it reduces memory leaks. However, for
+        # masked data, weakref breaks the actual masking out by imshow (at least through MPL 3.0).
+        slice_data = self._slice_data if np.ma.is_masked(self._slice_data) else weakref.proxy(self._slice_data)
+
         # Create the figure if it does not exist
         if not self._data_open:
             figure = Figure(dpi=self._settings['dpi'], facecolor='white')
@@ -946,7 +1085,7 @@ class ImageViewWindow(DataViewWindow):
             self._scrollable_canvas.create_window(0, 0, window=self._figure_canvas.tk_widget, anchor='nw')
 
             # Create the toolbar (hidden, used for its pan and axis-limits to rectangle options)
-            self._toolbar = NavigationToolbar2TkAgg(self._figure_canvas.mpl_canvas, self._display_frame)
+            self._toolbar = MPLCompat.NavigationToolbar2Tk(self._figure_canvas.mpl_canvas, self._display_frame)
             self._toolbar.update()
             self._toolbar.pack_forget()
 
@@ -955,7 +1094,7 @@ class ImageViewWindow(DataViewWindow):
                                                          clip_on=False)
 
             # Draw the image
-            self._image = ax.imshow(weakref.proxy(self._slice_data), origin='lower', interpolation='none',
+            self._image = ax.imshow(slice_data, origin='lower', interpolation='none',
                                     norm=mpl.colors.Normalize(), aspect='auto')
 
             # Disable X and Y tick labels
@@ -964,7 +1103,7 @@ class ImageViewWindow(DataViewWindow):
 
         # Update figure data if it already exists
         else:
-            self._image.set_data(weakref.proxy(self._slice_data))
+            self._image.set_data(slice_data)
 
         # Set image extent to correspond to from 0 to image dimensions. By default MPL goes from -0.5 to
         # dimensions+0.5, this does not look good when tick labels are enabled. Note that extent has an
@@ -978,11 +1117,14 @@ class ImageViewWindow(DataViewWindow):
         # other methods)
         self._update_scale()
 
+        # Update mode to match current menu_options
+        self._update_mode()
+
         # Add colorbar to image
         if self._colorbar is None:
             self._add_colorbar()
 
-        # Set figure dimensions to match viewing area (now that colorbar has been added as necessary)
+        # Set figure dimensions to match viewing area
         self._update_figure_dimensions()
 
         # Thaw the display, since it was frozen above
@@ -1000,7 +1142,7 @@ class ImageViewWindow(DataViewWindow):
             return self._slice_data
 
         axes = self._settings['axes']
-        axes_slice = [axes[i]['slice'] for i in range(0, len(self._settings['axes']))]
+        axes_slice = tuple([axes[i]['slice'] for i in range(0, len(self._settings['axes']))])
 
         # Obtain 2D (in case of grayscale data) or 3D (in case of color data) image data for current
         # subframe selections
@@ -1155,15 +1297,18 @@ class ImageViewWindow(DataViewWindow):
         if zoom_level is None:
 
             # Obtain the current zoom level
-            zoom_level = self.menu_option('zoom_level')
+            zoom_level = self.get_zoom_level()
 
             # Determine zoom level when adjusted by zoom factor
             zoom_factor = 0.20
 
             if action == 'in':
-                zoom_level *= (1 + zoom_factor)
+                zoom_level[0] *= (1 + zoom_factor)
+                zoom_level[1] *= (1 + zoom_factor)
+
             else:
-                zoom_level /= (1 + zoom_factor)
+                zoom_level[0] /= (1 + zoom_factor)
+                zoom_level[1] /= (1 + zoom_factor)
 
         # Save the new zoom level
         self.set_zoom(zoom_level)
@@ -1235,10 +1380,10 @@ class ImageViewWindow(DataViewWindow):
             norm = mpl.colors.LogNorm()
 
         elif scale == 'squared':
-            norm = PowerNorm(gamma=2.)
+            norm = MPLCompat.PowerNorm(gamma=2.)
 
         elif scale == 'square root':
-            norm = PowerNorm(gamma=0.5)
+            norm = MPLCompat.PowerNorm(gamma=0.5)
 
         else:
             self._menu_options['scale'].set('linear')
@@ -1336,6 +1481,7 @@ class ImageViewWindow(DataViewWindow):
             menu_option.set(0)
             raise ValueError("Rotation angle '{0}'must be evenly divisible by 90".format(rotation_angle))
 
+        # Update the slice data to reflect the new rotation
         self._draw_slice()
 
     # Updates the image orientation setting (orient via display dictionary or via storage order) to match
@@ -1359,6 +1505,24 @@ class ImageViewWindow(DataViewWindow):
         else:
             menu_option.set('display')
             raise ValueError('Unknown orientation setting selected: {0}'.format(orientation))
+
+    # Updates the zoom level to match the current mode menu_options value
+    def _update_mode(self, *args):
+
+        mode = self.menu_option('mode')
+
+        if mode == 'image':
+
+            zoom = self.get_zoom_level()
+            if zoom[0] != zoom[1]:
+                self._zoom(zoom_level=1)
+
+        elif mode == 'array':
+            self.zoom_to_fit()
+
+        elif mode != 'manual':
+            self.set_mode()
+            raise ValueError('Unknown mode: {0}'.format(mode))
 
     # Update the axis inversion to match current menu_options value
     def _update_invert_axis(self, has_default_orientation=False, *args):
@@ -1400,6 +1564,7 @@ class ImageViewWindow(DataViewWindow):
     # Update the colormap to match the current menu_options value
     def _update_colormap(self, *args):
 
+        axes = self._settings['axes']
         cmap = self.menu_option('colormap')
 
         # Special handling for RGB images
@@ -1408,23 +1573,17 @@ class ImageViewWindow(DataViewWindow):
             if not self._data_open:
                 return
 
-            # Detect if change from RGB to non-RGB colormap occurred
-            # (slice_data goes from 2D to 3D or vice-versa due to extra color axis being added/removed)
-            current_slice = self._get_slice_data()
-            new_slice = self._get_slice_data(update=True)
+            # Enable (when using RGB scaling) or disable (when using grayscale) the color axis
+            has_color_axis = False if axes.find('type', 'color') is None else True
 
-            if len(current_slice.shape) != len(new_slice.shape):
+            if cmap == 'RGB' and (not has_color_axis):
+                self.set_slice_axes()
 
-                # Update data
-                self._slice_data = new_slice
-                self._draw_slice()
+            elif cmap != 'RGB' and has_color_axis:
+                self.set_slice_axes(color_axis='none')
 
-                # Do not continue (drawing the slice will call this method again, and when it does the
-                # colormap will be updated for monochrome images)
-                return
-
-            # Do not update colormap for RGB images
-            elif cmap == 'RGB':
+            # Do not update actual colormap for RGB images
+            if cmap == 'RGB':
                 return
 
         if self.menu_option('invert_colormap'):
@@ -1472,7 +1631,7 @@ class ImageViewWindow(DataViewWindow):
         # (bigger for bigger images and display sizes)
         tick_params = self.__get_tick_parameters(for_save=for_save)
 
-        ax.tick_params(axis='both', which='major',
+        ax.tick_params(axis='both', which='major', direction='in',
                        labelsize=tick_params['label_size'], pad=tick_params['label_pad'],
                        length=tick_params['tick_length'], width=tick_params['tick_width'])
 
@@ -1601,7 +1760,7 @@ class ImageViewWindow(DataViewWindow):
                                            + ']')
 
                     # Format scalar pixel value
-                    else:
+                    elif not isinstance(pixel_value, np.ma.core.MaskedConstant):
                         pixel_value = '{0:10}'.format(pixel_value).lstrip()
 
                     self._header_widgets['value'].set(pixel_value)
@@ -1627,10 +1786,13 @@ class ImageViewWindow(DataViewWindow):
     def _image_dimensions(self, zoom_level=None):
 
         if zoom_level is None:
-            zoom_level = self.menu_option('zoom_level')
+            zoom_level = self.get_zoom_level()
 
-        image_width = self._get_slice_data().shape[1] * zoom_level
-        image_height = self._get_slice_data().shape[0] * zoom_level
+        elif isinstance(zoom_level, (int, float)):
+            zoom_level = [zoom_level] * 2
+
+        image_width = self._get_slice_data().shape[1] * zoom_level[0]
+        image_height = self._get_slice_data().shape[0] * zoom_level[1]
 
         return image_width, image_height
 
@@ -1861,6 +2023,18 @@ class ImageViewWindow(DataViewWindow):
         width = self._scrollable_canvas.winfo_width()
         height = self._scrollable_canvas.winfo_height()
 
+        # Adjust width or height to account for colorbar
+        # (when colorbar should be shown and thus should take up space, but has not been created yet)
+        show_colorbar = self.menu_option('show_colorbar')
+        colorbar_orient = self.menu_option('colorbar_orient')
+
+        if show_colorbar and (self._colorbar is None):
+
+            if colorbar_orient == 'horizontal':
+                height -= Colorbar.HORIZONTAL_HEIGHT
+            else:
+                width -= Colorbar.VERTICAL_WIDTH
+
         # Set dimensions for the figure to match available window size for it
         self._figure_canvas.set_dimensions((width, height), type='pixels')
 
@@ -1975,8 +2149,8 @@ class ImageViewWindow(DataViewWindow):
 
         # Raise a warning due to Agg limitation, see also:
         # https://github.com/matplotlib/matplotlib/pull/3451.
-        # Note that at least until MPL 1.5.3, even saving as SVG, EPS and PS seems to result in incomplete
-        # images. This appears fixed in MPL 2.0.
+        # Note that in all of MPL 1.x, even saving as SVG, EPS and PS seems to result in incomplete
+        # images. This appears fixed in MPL 2.0+.
         if (image_width > 32767) or (image_height > 32767):
             message = ('Detected attempt to save image that has a dimension exceeding 32767 pixels. \n\n'
                        'Saving such images as PNG or PDF is likely to result in an incomplete image. '
@@ -2075,6 +2249,9 @@ class ImageViewWindow(DataViewWindow):
 
     def close(self):
 
+        self._slice_data = None
+        self._masked_data = None
+
         if self._image is not None:
             self._image.remove()
 
@@ -2093,6 +2270,9 @@ class ImageViewWindow(DataViewWindow):
 class Colorbar(object):
     """ Colorbar class; creates a FigureCanvas for the Colorbar and controls its content """
 
+    VERTICAL_WIDTH = 120
+    HORIZONTAL_HEIGHT = 56
+
     def __init__(self, scrollbar_frame, image, orientation):
 
         # Instance variables
@@ -2110,14 +2290,21 @@ class Colorbar(object):
         # Setup a new axis for the external colorbar (must be sized to allow tick labels in the margins)
         if orientation == 'vertical':
             cax = colorbar_figure.add_axes([0.1, 0.05, 0.2, 0.9])
+            direction = 'in'
+            pad = 3
 
         else:
-            cax = colorbar_figure.add_axes([0.04, 0.4, 0.92, 0.4])
+            cax = colorbar_figure.add_axes([0.04, 0.40, 0.92, 0.4])
+            direction = 'out'
+            pad = 2
 
         # Create a new FigureCanvas for the Figure
         self._orientation = orientation
+        self._format = '%4.2e'
+
         self._figure_canvas = FigureCanvas(colorbar_figure, master=self._frame)
-        self._mpl_colorbar = colorbar_figure.colorbar(image, orientation=orientation, cax=cax, format='%4.2e')
+        self._mpl_colorbar = colorbar_figure.colorbar(image, orientation=orientation, cax=cax, format=self._format)
+        self._mpl_colorbar.ax.tick_params(pad=pad, direction=direction)
 
         # Update colorbar dimensions (in this case setting the colorbar's initial size)
         self._update_dimensions()
@@ -2147,13 +2334,30 @@ class Colorbar(object):
     def update(self, image):
 
         self._figure_canvas.freeze()
-
         self._image = image
-        self._update_dimensions()
-        self._mpl_colorbar.set_norm(image.norm)
-        self._mpl_colorbar.set_cmap(image.cmap)
-        self._mpl_colorbar.update_normal(image)
 
+        # Update norm and colormap of colorbar to match *image* (necessary prior to MPL v3.1)
+        try:
+
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', MPLCompat.DeprecationWarning)
+                self._mpl_colorbar.set_norm(image.norm)
+                self._mpl_colorbar.set_cmap(image.cmap)
+
+        except AttributeError:
+            pass
+
+        # Redraw the colorbar to reflect new image norm and colormap
+        self._mpl_colorbar.update_normal(image)
+        self._mpl_colorbar.formatter = mpl.ticker.FormatStrFormatter(self._format)
+
+        # Turn off minorticks (necessary after MPL v3.1 for LogNorm)
+        try:
+            self._mpl_colorbar.minorticks_off()
+        except AttributeError:
+            pass
+
+        self._update_dimensions()
         self._figure_canvas.thaw()
 
     def _update_dimensions(self):
@@ -2163,12 +2367,12 @@ class Colorbar(object):
         if self._orientation == 'vertical':
 
             scrollable_height = self._frame.winfo_height()
-            colorbar_size = (120, scrollable_height)
+            colorbar_size = (Colorbar.VERTICAL_WIDTH, scrollable_height)
 
         else:
 
             scrollable_width = self._frame.winfo_width()
-            colorbar_size = (scrollable_width, 56)
+            colorbar_size = (scrollable_width, Colorbar.HORIZONTAL_HEIGHT)
 
         # Update colorbar dimensions
         self._figure_canvas.set_dimensions(colorbar_size, type='pixels')
@@ -2216,8 +2420,8 @@ class Colorbar(object):
             increment = (1. / (num_ticks - 1)) * (1. - edge_remove)
 
             for i in range(0, num_ticks):
-                tick_norm = (edge_remove / 2.) + (increment * i)
-                ticks.append(norm.inverse(tick_norm))
+                tick_point = ((edge_remove / 2.) + (increment * i))
+                ticks.append(norm.inverse(tick_point))
 
         return ticks
 
@@ -2338,6 +2542,7 @@ class DataCubeWindow(Window):
 
 
 class ScaleParametersWindow(Window):
+    """ Window used to adjust scale parameters an ImageViewWindow """
 
     def __init__(self, viewer, image_structure_window, image):
 
@@ -2372,7 +2577,7 @@ class ScaleParametersWindow(Window):
             self._add_trace(var, 'w', option['trace'], option['default'])
 
         # Add the menu
-        self._add_menu()
+        self._add_menus()
 
         # Extract a flattened view of the data, removing any NaN and inf
         flat_data = self._structure_window.data.ravel()
@@ -2403,21 +2608,15 @@ class ScaleParametersWindow(Window):
         self._histogram_frame.bind('<Configure>', self._window_resize)
 
     # Adds menu options used for manipulating the data display
-    def _add_menu(self):
+    def _add_menus(self):
 
-        # Create File Menu
-        self._menu = Menu(self._widget)
-        self._widget.config(menu=self._menu)
-
-        file_menu = Menu(self._menu, tearoff=0)
+        # Add a File Menu
+        file_menu = self._add_menu('File', in_menu='main')
         file_menu.add_command(label='Close', command=self.close)
         file_menu.add_command(label='Close All', command=self._viewer.quit)
-        self._menu.add_cascade(label='File', menu=file_menu)
 
         # Add a Scale menu
-        scale_menu = Menu(self._menu, tearoff=0)
-        self._menu.add_cascade(label='Scale', menu=scale_menu)
-
+        scale_menu = self._add_menu('Scale', in_menu='main')
         scale_types = ('linear', 'log', 'squared', 'square root')
 
         for scale in scale_types:
@@ -2425,16 +2624,14 @@ class ScaleParametersWindow(Window):
             # PowerNorm is an MPL feature available in MPL v1.4+ only
             disable_powernorm = {}
 
-            if (PowerNorm is None) and (scale in ('squared', 'square root')):
+            if (MPLCompat.PowerNorm is None) and (scale in ('squared', 'square root')):
                 disable_powernorm = {'state': 'disabled'}
 
             scale_menu.add_checkbutton(label=scale.title(), onvalue=scale, offvalue=scale,
                                        variable=self._menu_options['scale'], **disable_powernorm)
 
         # Add a Limits menu
-        limits_menu = Menu(self._menu, tearoff=0)
-        self._menu.add_cascade(label='Limits', menu=limits_menu)
-
+        limits_menu = self._add_menu('Limits', in_menu='main')
         scale_limits = ('min max', 'zscale')
 
         for limit in scale_limits:
@@ -2442,9 +2639,7 @@ class ScaleParametersWindow(Window):
                                         variable=self._menu_options['scale_limits'])
 
         # Add a Scope menu
-        scope_menu = Menu(self._menu, tearoff=0)
-        self._menu.add_cascade(label='Scope', menu=scope_menu)
-
+        scope_menu = self._add_menu('Scope', in_menu='main')
         scope_options = ('global', 'local')
 
         for scope in scope_options:
@@ -2452,9 +2647,7 @@ class ScaleParametersWindow(Window):
                                        variable=self._menu_options['scope'])
 
         # Add a Graph menu
-        graph_menu = Menu(self._menu, tearoff=0)
-        self._menu.add_cascade(label='Graph', menu=graph_menu)
-
+        graph_menu = self._add_menu('Graph', in_menu='main')
         range_options = ('full range', 'current range')
 
         for graph_range in range_options:
@@ -2559,7 +2752,7 @@ class ScaleParametersWindow(Window):
                 min_x = self._histogram_data.min()
                 max_x = self._histogram_data.max()
 
-            scale_limits = '{0},{1}'.format(min_x, max_x)
+            scale_limits = [min_x, max_x]
 
         self._structure_window.set_scale(scale=scale, limits=scale_limits)
 
@@ -2613,7 +2806,7 @@ class ScaleParametersWindow(Window):
             # Enable grid, and disable tick marks on top and right sides of plot
             histogram_axis.grid(color='gray', linestyle=':', linewidth=1, axis='y', which='both', alpha=0.45)
             histogram_axis.set_axisbelow(True)
-            histogram_axis.set_axis_bgcolor(self._figure_canvas.mpl_figure.get_facecolor())
+            MPLCompat.axis_set_facecolor(histogram_axis, self._figure_canvas.mpl_figure.get_facecolor())
             histogram_axis.tick_params(direction='out')
             histogram_axis.xaxis.set_ticks_position('bottom')
             histogram_axis.yaxis.set_ticks_position('left')
@@ -2668,6 +2861,86 @@ class ScaleParametersWindow(Window):
         self._histogram_data = None
 
         super(ScaleParametersWindow, self).close()
+
+
+class ZoomPropertiesWindow(Window):
+    """ Window used to adjust zoom and aspect ratio for an ImageViewWindow """
+
+    def __init__(self, viewer, image_structure_window):
+
+        # Set initial necessary variables and do other required initialization procedures
+        super(ZoomPropertiesWindow, self).__init__(viewer)
+
+        # Set the title
+        self._set_title('{0} - Zoom Properties'.format(self._get_title()))
+
+        # Set the ImageViewWindow to an instance variable
+        self._structure_window = image_structure_window
+
+        # Obtain zoom level (try to use integers where the level is a whole number)
+        zoom_level = self._structure_window.get_zoom_level()
+        for i, level in enumerate(zoom_level):
+            if level.is_integer():
+                zoom_level[i] = int(level)
+            else:
+                zoom_level[i] = round(level, 5)
+
+        # Create variables to store current zoom level / aspect ratio
+        self._zoom_width = DoubleVar()
+        self._zoom_width.set(zoom_level[0])
+
+        self._zoom_height = DoubleVar()
+        self._zoom_height.set(zoom_level[1])
+
+        # Draw the main window content
+        self._draw_content()
+
+        # Update window to ensure it has taken its final form, then show it
+        self._widget.update_idletasks()
+        self._show_window()
+
+    # Draws the main content of the window
+    def _draw_content(self):
+
+        top_frame = Frame(self._widget)
+        top_frame.pack(side='top', padx=10, pady=(10, 0))
+
+        w = Label(top_frame, text='Zoom')
+        w.pack(side='left')
+
+        w = Label(top_frame, text='X')
+        w.pack(side='left', padx=(10, 5))
+
+        e = Entry(top_frame, width=10, bg='white', textvariable=self._zoom_width)
+        e.pack(side='left')
+
+        w = Label(top_frame, text='Y')
+        w.pack(side='left', padx=(10, 5))
+
+        e = Entry(top_frame, width=10, bg='white', textvariable=self._zoom_height)
+        e.pack(side='left')
+
+        separator = Frame(self._widget, height=2, bd=1, relief='sunken')
+        separator.pack(side='top', fill='x', padx=10, pady=15)
+
+        buttons_frame = Frame(self._widget)
+        buttons_frame.pack(side='top', anchor='center', pady=(0,10))
+
+        button_params = {'width': 10, 'font': self.get_font(weight='bold')}
+
+        apply_button = Button(buttons_frame, text='Apply', command=self._apply_aspect_ratio, **button_params)
+        apply_button.pack(side='left', padx=(0, 5))
+
+        close_button = Button(buttons_frame, text='Close', command=self.close, **button_params)
+        close_button.pack(side='left')
+
+    # Applies scale limits to image
+    def _apply_aspect_ratio(self):
+
+        zoom_level = [self._zoom_width.get(), self._zoom_height.get()]
+        zoom_level_frac = list(map(Fraction, zoom_level))
+
+        self._structure_window.set_zoom(zoom_level_frac, mode='manual')
 
 
 class _AxesProperties(object):

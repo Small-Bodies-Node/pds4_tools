@@ -3,15 +3,18 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import functools
 import os
-import platform
-import subprocess
+import re
 import sys
-import traceback
 import weakref
+import platform
+import functools
+import traceback
+import subprocess
 
 from . import cache
+from ..utils.compat import OrderedDict, argparse
+from ..utils.helpers import is_array_like
 from ..utils.logging import logger_init
 
 from ..extern import six
@@ -19,18 +22,12 @@ from ..extern.six.moves.tkinter import Event as TKEvent
 from ..extern.six.moves.tkinter import (Tk, Toplevel, PhotoImage, Menu, Scrollbar, Canvas, Frame, Label,
                                         Entry, Text, Button, Checkbutton, BooleanVar, StringVar, TclError)
 
-# NOTE: DO NOT IMPORT MATPLOTLIB HERE, import any other module
+# NOTE: DO NOT IMPORT MATPLOTLIB HERE, or import any other module
 # that in-turn imports MPL or any module that imports anything that
 # should not be imported when the Viewer is not actually used. See
 # note in ``_mpl_commands`` below for explanation. This module is
 # imported by `pds4_tools.__init__``, as is any module this module
 # in-turn imports.
-
-# Safe import of OrderedDict
-try:
-    from collections import OrderedDict
-except ImportError:
-    from ..extern.ordered_dict import OrderedDict
 
 # Initialize the logger
 logger = logger_init()
@@ -122,7 +119,7 @@ class PDS4Viewer(object):
 
         # Under some circumstances destroying the root window will not close other windows, therefore
         # we do it ourselves (after dereferencing the window)
-        for window in self._open_windows:
+        for window in reversed(self._open_windows):
             window().close()
 
         # Under some circumstances both quit() and destroy() are necessary to kill the TK mainloop
@@ -168,7 +165,7 @@ class Window(object):
         self._win_dimensions = {'width': 0, 'height': 0}
 
         # Initialize required variables for windows
-        self._menu = None
+        self._menus = {}
         self._menu_options = {}
         self._callbacks = {}
         self._dependent_windows = []
@@ -198,7 +195,7 @@ class Window(object):
             self._widget.destroy()
             self._viewer.remove_window(self)
 
-    # Returns a menu option value given by name, if one exists, or None if it does not exist. If
+    # Obtain a menu option value given by name, if one exists, or None if it does not exist. If
     # `value` is set to false, the actual menu option TK variable will be returned.
     def menu_option(self, name, value=True):
 
@@ -216,29 +213,88 @@ class Window(object):
 
         return option_value
 
-    # Issues warning. If log is true, the warning is logged. If show is True, a warning message will open.
-    def _issue_warning(self, message, title='Warning', log=True, show=True):
+    # Obtain a menu given a name. If *name* is that of a sub-menu, *in_menu* must specify the full path
+    # to its parent menu. For sub-menus deeper than one parent, *in_menu* should be a tuple of in-order parent menus.
+    def _menu(self, name=None, in_menu='main'):
 
-        warning_window = None
+        full_name = self.__get_menu_full_name(name, in_menu)
+        menu = self._menus.get(full_name)
 
-        if log:
-            logger.warning(message)
+        if menu is None:
+            raise ValueError('Menu not found. For sub-menus, ensure to specify full path.')
 
-        if show and not logger.is_quiet():
-            warning_window = MessageWindow(self._viewer, title, message, word_wrap=True)
+        return menu
 
-            # Attempt to make window on top of any others open
-            try:
-                warning_window._widget.wm_attributes("-topmost", 1)
+    # Add a menu to the menu bar. See `self._menu` for more info on selecting menu to add to. May specify numeric
+    # *index* to insert into a specific position in given menu. To add an existing TK Menu to another location, use
+    # *existing_menu*.
+    def _add_menu(self, name, in_menu='main', index=None, existing_menu=None, **kwargs):
 
-            # Not available on some OS' and some TK versions
-            except TclError:
-                pass
+        # Create main menu (when there are no menus thus far)
+        main_menu = self._menus.get('main')
+        if (main_menu is None) or (main_menu.winfo_exists() == 0):
+            main_menu = Menu(self._widget)
+            self._menus['main'] = main_menu
+            self._widget.config(menu=main_menu)
 
-            # Force update, such that the warning message is shown properly even if GUI then freezes
-            self._widget.update()
+        # Obtain widget instance of *in_menu*
+        in_menu_wg = self._menu(in_menu=in_menu)
 
-        return warning_window
+        # Create our new menu
+        if existing_menu is None:
+            tearoff = kwargs.pop('tearoff', 0)
+            new_menu = Menu(in_menu_wg, tearoff=tearoff, **kwargs)
+        else:
+            new_menu = existing_menu
+
+        # Add or insert the new menu
+        if index is None:
+            in_menu_wg.add_cascade(label=name, menu=new_menu)
+
+        else:
+
+            if isinstance(index, six.string_types):
+                index = in_menu_wg.index(index)
+
+            in_menu_wg.insert_cascade(index, label=name, menu=new_menu)
+
+        # Store the new menu
+        full_name = self.__get_menu_full_name(name, in_menu)
+        self._menus[full_name] = new_menu
+
+        return new_menu
+
+    # Remove a menu from the menu bar. See `self._menu` for more info on selecting a menu to remove. If the menu
+    # contains sub-menus, they will be recursively destroyed when *recursive* is True.
+    def _remove_menu(self, name, in_menu='main', recursive=True):
+
+        # Obtain widget instance of *in_menu*
+        in_menu_wg = self._menu(in_menu=in_menu)
+
+        # Ensure menu to be removed exists
+        menu = self._menu(name, in_menu=in_menu)
+
+        # Recursively delete sub-menus if requested
+        full_name = self.__get_menu_full_name(name, in_menu)
+        if recursive:
+
+            # Create pattern to look for non-recursive children of menu
+            sep = self.__get_menu_full_name(name='', in_menu='')
+            pattern = '{0}{1}(?!.*{1}).+'.format(full_name, sep)
+
+            # Find full names for all non-recursive children
+            child_full_names = [key for key in self._menus.keys() if re.match(pattern, key)]
+
+            # Delete each sub-menu
+            for child_full_name in child_full_names:
+
+                name_split = child_full_name.split(sep)
+                self._remove_menu(name_split[-1], in_menu=name_split[0:-1])
+
+        # Remove the menu
+        menu.destroy()
+        in_menu_wg.delete(name)
+        del self._menus[full_name]
 
     # Adds a dependent window to be tracked (a dependent window is one that should be closed if the
     # parent window is closed. For example, if manipulating a window after its parent was closed will
@@ -340,16 +396,6 @@ class Window(object):
 
         return trace_id
 
-    # Adds a file menu
-    def _add_file_menu(self):
-
-        self._widget.config(menu=self._menu)
-
-        file_menu = Menu(self._menu, tearoff=0)
-        file_menu.add_command(label='Close', command=self.close)
-        file_menu.add_command(label='Close All', command=self._viewer.quit)
-        self._menu.add_cascade(label='File', menu=file_menu)
-
     # Obtain window title
     def _get_title(self):
         return self._widget.title()
@@ -414,6 +460,30 @@ class Window(object):
 
         self._set_window_dimensions(width, height, x_offset, y_offset)
 
+    # Issues warning. If log is true, the warning is logged. If show is True, a warning message will open.
+    def _issue_warning(self, message, title='Warning', log=True, show=True):
+
+        warning_window = None
+
+        if log:
+            logger.warning(message)
+
+        if show and not logger.is_quiet():
+            warning_window = MessageWindow(self._viewer, title, message, word_wrap=True)
+
+            # Attempt to make window on top of any others open
+            try:
+                warning_window._widget.wm_attributes("-topmost", 1)
+
+            # Not available on some OS' and some TK versions
+            except TclError:
+                pass
+
+            # Force update, such that the warning message is shown properly even if GUI then freezes
+            self._widget.update()
+
+        return warning_window
+
     # Adds a scroll event binding
     def _bind_scroll_event(self, scroll_method):
 
@@ -447,7 +517,7 @@ class Window(object):
             try:
 
                 with open(os.devnull, 'w') as devnull:
-                    xrandr_output = subprocess.check_output("xrandr  | grep \* | cut -d' ' -f4",
+                    xrandr_output = subprocess.check_output(r"xrandr  | grep \* | cut -d' ' -f4",
                                                             shell=True, stderr=devnull)
 
                 if isinstance(xrandr_output, bytes):
@@ -463,6 +533,38 @@ class Window(object):
                 pass
 
         return screen_width, screen_height
+
+    # Obtain a full name for a menu or sub-menu.
+    @classmethod
+    def __get_menu_full_name(cls, name=None, in_menu=None):
+
+        if (name is None) and (in_menu is None):
+            raise ValueError('Either *name* or *in_menu* must be given.')
+
+        full_name = ''
+        sep = '###'
+
+        # Append *in_menu* items to full name
+        if in_menu is not None:
+
+            if is_array_like(in_menu):
+                full_name = sep.join(in_menu)
+            else:
+                full_name = in_menu
+
+        # Append *name* to full name
+        if name is not None:
+
+            if in_menu is not None:
+                full_name += sep + name
+            else:
+                full_name = name
+
+        # Append main to full name (as necessary), unless explicitly requested otherwise
+        if (in_menu != '') and (not full_name.startswith('main')):
+            full_name = 'main' + sep + full_name
+
+        return full_name
 
     # Returns the hex background color, automatically corrected for cross-platform differences
     def get_bg(self, type='transparent'):
@@ -521,18 +623,13 @@ class DataViewWindow(Window):
         super(DataViewWindow, self).__init__(viewer)
 
         # Create File Menu
-        self._menu = Menu(self._widget)
-        self._widget.config(menu=self._menu)
-
-        file_menu = Menu(self._menu, tearoff=0)
+        file_menu = self._add_menu('File', in_menu='main')
         file_menu.add_command(label='Close', command=self.close)
         file_menu.add_command(label='Close All', command=self._viewer.quit)
-        self._menu.add_cascade(label='File', menu=file_menu)
 
         # Initialize variables needed for any structure display window
-        self.data = None
-        self.meta_data = None
         self.structure = None
+        self.meta_data = None
         self._warnings = ''
         self._settings = {}
         self._data_open = False
@@ -587,8 +684,7 @@ class DataViewWindow(Window):
 
         from . import label_view
 
-        view_menu = Menu(self._menu, tearoff=0)
-        self._menu.add_cascade(label='View', menu=view_menu)
+        view_menu = self._add_menu('View', in_menu='main')
 
         labels = [self.structure.full_label, self.structure.label] if self.structure else [None, None]
         disable_open_label = {} if all(labels) else {'state': 'disabled'}
@@ -601,13 +697,10 @@ class DataViewWindow(Window):
         view_menu.add_command(label='Warnings',
                               command=lambda: MessageWindow(self._viewer, 'Warnings', self._warnings))
 
-        return view_menu
-
     def close(self):
 
-        self.data = None
-        self.meta_data = None
         self.structure = None
+        self.meta_data = None
 
         super(DataViewWindow, self).close()
 
@@ -679,13 +772,15 @@ class MessageWindow(Window):
         self._widget.clipboard_append(message)
 
 
-class SearchableTextWindow(Window):
-    """ Base class; Window used to display text on a scrollable and searchable text area """
+class SearchableTextWindowMixIn(object):
+    """ Mix-in for window used to display text on a scrollable and searchable text area """
 
-    def __init__(self, viewer, header=None, text=None):
+    def __init__(self, viewer):
 
-        # Set initial necessary variables and do other required initialization procedures
-        super(SearchableTextWindow, self).__init__(viewer)
+        super(SearchableTextWindowMixIn, self).__init__(viewer)
+
+        # Master widget into which the rest of the non-Menu widgets are inserted
+        self._master = self._widget
 
         # Stores search string in search box
         self._search_text = StringVar()
@@ -704,45 +799,23 @@ class SearchableTextWindow(Window):
         # Stores header text
         self._header_text = StringVar()
 
-        # Create the menu
-        self._add_menu()
-
         # Create the rest of the SearchableTextWindow content
         self._text_pad = None
         self._search_match_label = None
-        self._draw_content()
 
-        # Add notify event for scroll wheel (used to scroll label via scroll wheel without focus)
-        self._bind_scroll_event(self._mousewheel_scroll)
+    # Adds menu options used for manipulating the window and searchable text
+    def _add_menus(self):
 
-        # Set header and window text, if given. We only show window by default if text was given
-        if header is not None:
-            self._set_header(header)
-
-        if text is not None:
-            self._set_text(text)
-
-            self._center_and_fit_to_content()
-            self._show_window()
-
-    # Adds menu options used for manipulating the label display
-    def _add_menu(self):
-
-        # Create File Menu
-        self._menu = Menu(self._widget)
-        self._add_file_menu()
-
-        # Create Edit Menu
-        edit_menu = Menu(self._menu, tearoff=0)
+        # Add an Edit Menu
+        edit_menu = self._add_menu('Edit', in_menu='main')
         edit_menu.add_command(label='Select All', command=self._select_all)
         edit_menu.add_command(label='Copy', command=self._copy)
-        self._menu.add_cascade(label='Edit', menu=edit_menu)
 
     # Draws the majority of the SearchableTextWindow content (header, text pad, scrollbars and search box)
     def _draw_content(self):
 
         # Add header
-        header_box = Frame(self._widget, bg=self.get_bg('gray'))
+        header_box = Frame(self._master, bg=self.get_bg('gray'))
         header_box.pack(side='top', fill='x')
 
         header = Label(header_box, textvar=self._header_text, bg=self.get_bg('gray'),
@@ -750,7 +823,7 @@ class SearchableTextWindow(Window):
         header.pack(pady=10, side='top')
 
         # Search box's parent frame (ensures that search box remains in view when window is resized down)
-        search_box_parent_frame = Frame(self._widget, bg=self.get_bg('gray'))
+        search_box_parent_frame = Frame(self._master, bg=self.get_bg('gray'))
         search_box_parent_frame.pack(side='bottom', fill='x', anchor='nw')
 
         # Add search box
@@ -775,7 +848,7 @@ class SearchableTextWindow(Window):
         self._search_match_label = Label(search_box_frame, fg='slate gray', bg=self.get_bg('gray'))
 
         # Add text pad
-        text_pad_frame = Frame(self._widget)
+        text_pad_frame = Frame(self._master)
         self._create_text_pad(text_pad_frame)
 
         # Add scrollbars for text pad
@@ -815,7 +888,7 @@ class SearchableTextWindow(Window):
         self._text_pad.config(state='disabled')
 
     # Sets text shown in header
-    def _set_header(self, header):
+    def _set_heading(self, header):
         self._header_text.set(header)
 
     # Searches for the string in the search box
@@ -929,6 +1002,42 @@ class SearchableTextWindow(Window):
         self._text_pad.yview_scroll(event_delta, 'units')
 
 
+class SearchableTextWindow(SearchableTextWindowMixIn, Window):
+    """ Base class; Window used to display text on a scrollable and searchable text area """
+
+    def __init__(self, viewer, heading, text):
+
+        # Set initial necessary variables and do other required initialization procedures
+        super(SearchableTextWindow, self).__init__(viewer)
+
+        # Create the menu
+        self._add_menus()
+
+        # Draw the main window content
+        self._draw_content()
+
+        # Add notify event for scroll wheel (used to scroll via scroll wheel without focus)
+        self._bind_scroll_event(self._mousewheel_scroll)
+
+        # Set heading and text
+        self._set_heading(heading)
+        self._set_text(text)
+
+        self._center_and_fit_to_content()
+        self._show_window()
+
+    # Adds menu options used for manipulating the window
+    def _add_menus(self):
+
+        # Add a File Menu
+        file_menu = self._add_menu('File', in_menu='main')
+        file_menu.add_command(label='Close', command=self.close)
+        file_menu.add_command(label='Close All', command=self._viewer.quit)
+
+        # Add MixIn menus
+        super(SearchableTextWindow, self)._add_menus()
+
+
 # Sets the icon for a Tkinter widget
 def _set_icon(tk_widget, icon_name='logo'):
 
@@ -1031,12 +1140,6 @@ def main():
     Generally one should use `core.pds4_viewer` instead of this wrapper if using the viewer
     as a module instead of a script. """
 
-    # Safe import of argparse
-    try:
-        import argparse
-    except ImportError:
-        from ..extern import argparse
-
     # Create program arguments
     parser = argparse.ArgumentParser()
     parser.register('type', 'bool', lambda x: x.lower() in ('yes', 'true', 't', '1'))
@@ -1046,7 +1149,7 @@ def main():
                         type='bool', default=True)
     parser.add_argument("--quiet", help="Suppresses all info/warnings", type='bool', default=False)
 
-    args = parser.parse_args()
+    args, extra = parser.parse_known_args()
 
     pds4_viewer(filename=args.filename, lazy_load=args.lazy_load, quiet=args.quiet)
 

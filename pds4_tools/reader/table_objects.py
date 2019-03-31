@@ -7,24 +7,18 @@ import re
 import abc
 import sys
 import numpy as np
-from collections import Sequence
 
 from .general_objects import Structure, Meta_Class, Meta_Structure
 from .label_objects import Meta_SpectralCharacteristics
-from .data_types import pds_to_numpy_name
+from .data_types import pds_to_numpy_name, PDSdtype
 
+from ..utils.compat import OrderedDict, collections_abc
 from ..utils.helpers import is_array_like, dict_extract
 from ..utils.exceptions import PDS4StandardsException
 from ..utils.logging import logger_init
 
 from ..extern import six
 from ..extern.cached_property import threaded_cached_property
-
-# Safe import of OrderedDict
-try:
-    from collections import OrderedDict
-except ImportError:
-    from ..extern.ordered_dict import OrderedDict
 
 # Initialize the logger
 logger = logger_init()
@@ -428,7 +422,7 @@ class TableStructure(Structure):
         if self.data_loaded:
 
             table_structure = self.from_fields(fields=self.fields, no_scale=True, decode_strings=False,
-                                               masked=True, structure_data=self.data, **kwargs)
+                                               masked=True, copy=False, structure_data=self.data, **kwargs)
 
         # If the data has not been loaded, create a view of TableStructure that indicates to mask data
         # when the attempt to access it is made later
@@ -611,7 +605,7 @@ class Meta_TableStructure(Meta_Structure):
         return False
 
 
-class TableManifest(Sequence):
+class TableManifest(collections_abc.Sequence):
     """ Stores a single table's Meta_Fields and Meta_Groups
 
     The manifest is a representation the table, with fields and groups in the same order as they physically
@@ -1375,7 +1369,7 @@ class TableManifest(Sequence):
             elif 'format' in item:
 
                 # Ensure field_format requirements
-                valid_field_format = re.compile('^%([\+,-])?([0-9]+)(\.([0-9]+))?([doxfes])$')
+                valid_field_format = re.compile(r'^%([\+,-])?([0-9]+)(\.([0-9]+))?([doxfes])$')
 
                 if not valid_field_format.match(item['format']):
                     logger.warning("field_format '{0}' does not conform to PDS4 standards for field {1} "
@@ -1583,7 +1577,7 @@ class Meta_TableElement(Meta_Class):
 
 
 class Meta_Field(Meta_TableElement):
-    """ Stores meta data about a single <Field_*>.
+    r""" Stores meta data about a single <Field_*>.
 
     Subclassed by `Meta_FieldCharacter`, `Meta_FieldBinary`, `Meta_FieldDelimited` and
     `Meta_FieldUniformlySampled`.
@@ -1653,6 +1647,23 @@ class Meta_Field(Meta_TableElement):
         obj._check_keys_exist(['name'])
 
         return obj
+
+    def data_type(self):
+        """ Data type of the field.
+
+        Notes
+        -----
+        All fields, except Uniformly Sampled fields, must specify the data type. Uniformly Sampled fields
+        default to ASCII_Real with-in this code.
+
+        Returns
+        -------
+        PDSdtype
+            A PDS4 data type.
+        """
+
+        data_type = self.get('data_type', 'ASCII_Real')
+        return PDSdtype(data_type)
 
 
 class Meta_FieldCharacter(Meta_Field):
@@ -1757,7 +1768,7 @@ class Meta_FieldDelimited(Meta_Field):
 
         obj = super(Meta_FieldDelimited, cls).from_label(field_xml)
 
-        keys_must_exist = ['name', 'data_type']
+        keys_must_exist = ['data_type']
         obj._check_keys_exist(keys_must_exist)
 
         return obj
@@ -1804,7 +1815,7 @@ class Meta_FieldBit(Meta_Field):
 
 
 class Meta_Group(Meta_TableElement):
-    """ Stores meta data about a single <Group_Field_*>.
+    r""" Stores meta data about a single <Group_Field_*>.
 
     Notes
     -----

@@ -20,8 +20,5 @@ All common PDS4 data products are supported.
 
 This package is developed by the PDS Small Bodies Node.
 
-User Manual is available at:
-http://sbndev.astro.umd.edu/pds4_tools_docs/user_manual.html
-
-Additional documentation is available online at:
-http://sbndev.astro.umd.edu/wiki/Python_PDS4_Tools
+* `Usage Documentation <http://sbndev.astro.umd.edu/pds4_tools_docs/current/>`_
+* `Other Documentation <http://sbndev.astro.umd.edu/wiki/Python_PDS4_Tools>`_

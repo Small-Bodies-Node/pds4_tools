@@ -6,17 +6,11 @@ from __future__ import unicode_literals
 import xml.etree.ElementTree as ET
 from xml.parsers.expat import ExpatError
 
+from ..utils import compat
 from ..utils.constants import PDS4_NAMESPACES
 from ..utils.logging import logger_init
 
 from ..extern import six
-
-# Safe import of ParseError (Python 2.7 and 3+ only)
-try:
-    from xml.etree.ElementTree import ParseError
-
-except ImportError:
-    ParseError = None
 
 # Initialize the logger
 logger = logger_init()
@@ -108,7 +102,7 @@ def read_label(filename, strip_extra_whitespace=True, enforce_default_prefixes=F
             # Strip whitespace in elements and attributes if requested
             if strip_extra_whitespace:
 
-                subiter = ET.ElementTree(elem).getiterator()
+                subiter = compat.ET_Tree_iter(ET.ElementTree(elem))
                 attribs = six.iteritems(elem.attrib)
 
                 # Strip whitespaces at beginning and end of value in elements that do not have children
@@ -131,7 +125,7 @@ def read_label(filename, strip_extra_whitespace=True, enforce_default_prefixes=F
             label_xml_root = _decode_tree(label_xml_root)
 
     # Raise exception if XML cannot be parsed. In Python 3 we raise from None to avoid confusing re-raise
-    except (ExpatError, ParseError):
+    except (ExpatError, compat.ET_ParseError):
         six.raise_from(
             ExpatError('The requested PDS4 label file does not appear contain valid XML: ' + filename), None)
 
@@ -180,7 +174,7 @@ def _decode_tree(xml_tree):
         return text
 
     # Loop over all elements in the tree
-    for elem in xml_tree.getiterator():
+    for elem in compat.ET_Element_iter(xml_tree):
 
         # Decode elements
         elem.tag = decode(elem.tag)

@@ -196,11 +196,6 @@ class Meta_HeaderStructure(Meta_Structure):
     FITS 3.0
     """
 
-    def __init__(self, *args, **kwds):
-        super(Meta_HeaderStructure, self).__init__(*args, **kwds)
-
-        # CAN BE DELETED?
-
     @classmethod
     def from_label(cls, xml_header):
         """ Create a Meta_HeaderStructure from the XML portion describing it in the label.

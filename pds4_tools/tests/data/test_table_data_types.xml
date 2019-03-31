@@ -47,9 +47,9 @@
           <offset unit="byte">0</offset>
           <records>3</records>
           <Record_Binary>
-            <fields>39</fields>
+            <fields>41</fields>
             <groups>0</groups>
-            <record_length unit="byte">338</record_length>
+            <record_length unit="byte">370</record_length>
             <Field_Binary>
               <name>SignedByte</name>
               <field_location unit="byte">1</field_location>
@@ -293,8 +293,22 @@
               <description>Should contain [' Tést stríng 1  ', ' Tést  2         ', ' Tést longést 3 ']</description>
             </Field_Binary>
             <Field_Binary>
-              <name>Overflow ASCII_Numeric_Base16</name>
+              <name>Dates_YMD_UTC</name>
               <field_location unit="byte">262</field_location>
+              <data_type>ASCII_Date_Time_YMD_UTC</data_type>
+              <field_length unit="byte">24</field_length>
+              <description>Should contain [2018-10-10T05:05Z, 2018-01-10T05:05:05.123Z, 2014Z]</description>
+            </Field_Binary>
+            <Field_Binary>
+              <name>Dates_DOY_Local</name>
+              <field_location unit="byte">286</field_location>
+              <data_type>ASCII_Date_DOY</data_type>
+              <field_length unit="byte">8</field_length>
+              <description>Should contain [2018-200, 2018-201, 2018-202]</description>
+            </Field_Binary>
+            <Field_Binary>
+              <name>Overflow ASCII_Numeric_Base16</name>
+              <field_location unit="byte">294</field_location>
               <data_type>ASCII_Numeric_Base16</data_type>
               <field_length unit="byte">17</field_length>
               <description>Should contain [17396744073709550582, 36893488147419103231, 73786976294838206465],
@@ -302,7 +316,7 @@
             </Field_Binary>
             <Field_Binary>
               <name>Overflow/Scaling ASCII_Numeric_Base8</name>
-              <field_location unit="byte">279</field_location>
+              <field_location unit="byte">311</field_location>
               <data_type>ASCII_Numeric_Base8</data_type>
               <field_length unit="byte">22</field_length>
               <value_offset>-73786976294838206463</value_offset>
@@ -312,7 +326,7 @@
             </Field_Binary>
             <Field_Binary>
               <name>Overflow/Scaling ASCII_Numeric_Base2</name>
-              <field_location unit="byte">301</field_location>
+              <field_location unit="byte">333</field_location>
               <data_type>ASCII_Numeric_Base2</data_type>
               <field_length unit="byte">16</field_length>
               <value_offset>100000000000000000000</value_offset>
@@ -322,7 +336,7 @@
             </Field_Binary>
             <Field_Binary>
               <name>Scaling/Offset Integer 1</name>
-              <field_location unit="byte">317</field_location>
+              <field_location unit="byte">349</field_location>
               <data_type>ASCII_Integer</data_type>
               <field_length unit="byte">9</field_length>
               <scaling_factor>98765454</scaling_factor>
@@ -331,7 +345,7 @@
             </Field_Binary>
             <Field_Binary>
               <name>Scaling/Offset Integer 2</name>
-              <field_location unit="byte">326</field_location>
+              <field_location unit="byte">358</field_location>
               <data_type>ASCII_Integer</data_type>
               <field_length unit="byte">9</field_length>
               <scaling_factor>98765454</scaling_factor>
@@ -340,7 +354,7 @@
             </Field_Binary>
             <Field_Binary>
               <name>Scaling/Offset Float</name>
-              <field_location unit="byte">335</field_location>
+              <field_location unit="byte">367</field_location>
               <data_type>IEEE754MSBSingle</data_type>
               <field_length unit="byte">4</field_length>
               <scaling_factor>-10000000000</scaling_factor>

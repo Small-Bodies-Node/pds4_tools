@@ -5,8 +5,8 @@ from __future__ import unicode_literals
 
 import sys
 import abc
-from collections import Sequence
 
+from ..utils.compat import OrderedDict, collections_abc
 from ..utils.helpers import xml_to_dict, is_array_like
 from ..utils.data_access import is_supported_url, download_file
 from ..utils.exceptions import PDS4StandardsException
@@ -14,19 +14,13 @@ from ..utils.logging import logger_init
 
 from ..extern import six
 
-# Safe import of OrderedDict
-try:
-    from collections import OrderedDict
-except ImportError:
-    from ..extern.ordered_dict import OrderedDict
-
 # Initialize the logger
 logger = logger_init()
 
 #################################
 
 
-class StructureList(Sequence):
+class StructureList(collections_abc.Sequence):
     """ Stores the label and all supported data structures of a PDS4 product.
 
         An object of this type is returned by `pds4_read`. PDS4 supported data structures are forms of Arrays,
@@ -186,7 +180,7 @@ class StructureList(Sequence):
         output : file, bool or None, optional
             A file-like object to write the output to.  If set to False, does not output to a file
             and instead returns a list of lists representing info for each Structure. Writes
-            to sys.stdout`` by default.
+            to ``sys.stdout`` by default.
 
         Returns
         -------

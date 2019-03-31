@@ -3,6 +3,8 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import datetime as dt
+
 import numpy as np
 
 from ..utils.logging import logger_init
@@ -16,42 +18,52 @@ logger = logger_init()
 #################################
 
 PDS_NUMERIC_TYPES = {
-    'IEEE754MSBSingle': ('big', 'float32', 'float'),
-    'IEEE754MSBDouble': ('big', 'float64', 'float'),
-    'SignedMSB2': ('big', 'int16', 'int'),
-    'SignedMSB4': ('big', 'int32', 'int'),
-    'SignedMSB8': ('big', 'int64', 'int'),
-    'UnsignedMSB2': ('big', 'uint16', 'int'),
-    'UnsignedMSB4': ('big', 'uint32', 'int'),
-    'UnsignedMSB8': ('big', 'uint64', 'int'),
-    'ComplexMSB8': ('big', 'complex64', 'complex'),
-    'ComplexMSB16': ('big', 'complex128', 'complex'),
+    'IEEE754MSBSingle': ('big', 'float32',    'float'),
+    'IEEE754MSBDouble': ('big', 'float64',    'float'),
+    'SignedMSB2':       ('big', 'int16',      'int'),
+    'SignedMSB4':       ('big', 'int32',      'int'),
+    'SignedMSB8':       ('big', 'int64',      'int'),
+    'UnsignedMSB2':     ('big', 'uint16',     'int'),
+    'UnsignedMSB4':     ('big', 'uint32',     'int'),
+    'UnsignedMSB8':     ('big', 'uint64',     'int'),
+    'ComplexMSB8':      ('big', 'complex64',  'complex'),
+    'ComplexMSB16':     ('big', 'complex128', 'complex'),
 
-    'IEEE754LSBSingle': ('little', 'float32', 'float'),
-    'IEEE754LSBDouble': ('little', 'float64', 'float'),
-    'SignedLSB2': ('little', 'int16', 'int'),
-    'SignedLSB4': ('little', 'int32', 'int'),
-    'SignedLSB8': ('little', 'int64', 'int'),
-    'UnsignedLSB2': ('little', 'uint16', 'int'),
-    'UnsignedLSB4': ('little', 'uint32', 'int'),
-    'UnsignedLSB8': ('little', 'uint64', 'int'),
-    'ComplexLSB8': ('little', 'complex64', 'complex'),
-    'ComplexLSB16': ('little', 'complex128', 'complex'),
+    'IEEE754LSBSingle': ('little', 'float32',    'float'),
+    'IEEE754LSBDouble': ('little', 'float64',    'float'),
+    'SignedLSB2':       ('little', 'int16',      'int'),
+    'SignedLSB4':       ('little', 'int32',      'int'),
+    'SignedLSB8':       ('little', 'int64',      'int'),
+    'UnsignedLSB2':     ('little', 'uint16',     'int'),
+    'UnsignedLSB4':     ('little', 'uint32',     'int'),
+    'UnsignedLSB8':     ('little', 'uint64',     'int'),
+    'ComplexLSB8':      ('little', 'complex64',  'complex'),
+    'ComplexLSB16':     ('little', 'complex128', 'complex'),
 
-    'SignedByte': ('little', 'int8', 'int'),
-    'UnsignedByte': ('little', 'uint8', 'int'),
+    'SignedByte':       ('little', 'int8',  'int'),
+    'UnsignedByte':     ('little', 'uint8', 'int'),
 
-    'ASCII_Real': ('native', 'float64', 'float'),
-    'ASCII_Integer': ('native', 'int64', 'int'),
-    'ASCII_NonNegative_Integer': ('native', 'uint64', 'int'),
-    'ASCII_Boolean': ('native', 'bool_', 'bool'),
-    'ASCII_Numeric_Base2': ('native', 'object', 'int'),
-    'ASCII_Numeric_Base8': ('native', 'object', 'int'),
-    'ASCII_Numeric_Base16': ('native', 'object', 'int'),
-    }
+    'ASCII_Real':                ('native', 'float64', 'float'),
+    'ASCII_Integer':             ('native', 'int64',   'int'),
+    'ASCII_NonNegative_Integer': ('native', 'uint64',  'int'),
+    'ASCII_Numeric_Base2':       ('native', 'object',  'int'),
+    'ASCII_Numeric_Base8':       ('native', 'object',  'int'),
+    'ASCII_Numeric_Base16':      ('native', 'object',  'int'),
+    'ASCII_Boolean':             ('native', 'bool_',   'bool'),
+}
+
+PDS4_DATE_TYPES = {
+    'ASCII_Date_DOY':          ('native', 'datetime64[D]',  'date',     '%Y-%j'),
+    'ASCII_Date_YMD':          ('native', 'datetime64[D]',  'date',     '%Y-%m-%d'),
+    'ASCII_Date_Time_DOY':     ('native', 'datetime64[us]', 'datetime', '%Y-%jT%H:%M:%S.%f'),
+    'ASCII_Date_Time_YMD':     ('native', 'datetime64[us]', 'datetime', '%Y-%m-%dT%H:%M:%S.%f'),
+    'ASCII_Date_Time_DOY_UTC': ('native', 'datetime64[us]', 'datetime', '%Y-%jT%H:%M:%S.%f'),
+    'ASCII_Date_Time_YMD_UTC': ('native', 'datetime64[us]', 'datetime', '%Y-%m-%dT%H:%M:%S.%f'),
+    'ASCII_Time':              ('native', 'datetime64[us]', 'time',     '%H:%M:%S.%f')
+}
 
 
-def pds_to_numpy_type(data_type=None, data=None, field_length=None, decode_strings=False,
+def pds_to_numpy_type(data_type=None, data=None, field_length=None, decode_strings=False, decode_dates=False,
                       scaling_factor=None, value_offset=None, include_endian=True):
     """ Obtain a NumPy dtype for PDS4 data.
 
@@ -67,7 +79,7 @@ def pds_to_numpy_type(data_type=None, data=None, field_length=None, decode_strin
 
     Parameters
     ----------
-    data_type : str or unicode, optional
+    data_type : str, unicode or PDSdtype, optional
         A PDS4 data type. If *data* is omitted, the obtained NumPy data type is based on this value
         (see notes).
     data : array_like, optional
@@ -82,6 +94,10 @@ def pds_to_numpy_type(data_type=None, data=None, field_length=None, decode_strin
         given and is unicode, then this setting will be ignored and unicode dtype will be returned. If
         *data_type* is given and refers to bit-strings, then this setting will be ignored and a byte string
         dtype will be returned. Defaults to False.
+    decode_dates: bool, optional
+        If True, then the returned dtype will be a datetime64 when *data_type* is both given and is a form of
+        date and/or time. If False, then the returned dtype will be a form of character according to *decode_strings*.
+        If *data* is given, then this setting will be ignored. Defaults to False.
     scaling_factor : int, float or None, optional
         PDS4 scaling factor. If given, the returned dtype will be large enough to contain data scaled by
         this number. Defaults to None, indicating a value of 1.
@@ -102,13 +118,18 @@ def pds_to_numpy_type(data_type=None, data=None, field_length=None, decode_strin
     if (data is None) and (data_type is None):
         raise ValueError('Either data or a data_type must be provided.')
 
+    # Ensure *data_type* is a PDSdtype when given
+    if data_type is not None:
+        data_type = PDSdtype(data_type)
+
     # Detect if dealing with bit strings
-    is_bitstring_data = (data_type is not None) and ('BitString' in data_type)
+    is_bitstring_data = (data_type is not None) and data_type.issubtype('BitString')
 
     # Get either a character or the initial unscaled numeric data type from data
     if data is not None:
         data = np.asanyarray(data)
         is_character_data = np.issubdtype(data.dtype, np.character)
+        is_datetime_data = np.issubdtype(data.dtype, np.datetime64)
 
         # Get dtype for character data (from data)
         if is_character_data:
@@ -129,8 +150,10 @@ def pds_to_numpy_type(data_type=None, data=None, field_length=None, decode_strin
 
     # Get either a character or the initial unscaled numeric data type from meta data
     else:
-        numeric_types = PDS_NUMERIC_TYPES.get(data_type, None)
-        is_character_data = numeric_types is None
+        numeric_types = PDS_NUMERIC_TYPES.get(data_type.name, None)
+        datetime_types = PDS4_DATE_TYPES.get(data_type.name, None)
+        is_datetime_data = (datetime_types is not None) and decode_dates
+        is_character_data = (numeric_types is None) and (not is_datetime_data)
 
         # Get dtype for character data (from meta data)
         if is_character_data:
@@ -139,14 +162,16 @@ def pds_to_numpy_type(data_type=None, data=None, field_length=None, decode_strin
             if field_length is not None:
                 dtype += str(field_length)
 
-        # Get dtype for numeric data (from meta data)
+        # Get dtype for numeric and datetime data (from meta data)
         else:
-            dtype = np.dtype(numeric_types[1])
+
+            types = datetime_types if is_datetime_data else numeric_types
+            dtype = np.dtype(types[1])
             if include_endian:
-                dtype = dtype.newbyteorder(numeric_types[0])
+                dtype = dtype.newbyteorder(types[0])
 
     # Get scaled data type for numeric data (if necessary)
-    if not is_character_data:
+    if (not is_character_data) and (not is_datetime_data):
 
         kwargs = {'scaling_factor': scaling_factor, 'value_offset': value_offset}
         has_scaling = (scaling_factor is not None) or (value_offset is not None)
@@ -154,7 +179,7 @@ def pds_to_numpy_type(data_type=None, data=None, field_length=None, decode_strin
         if data is not None:
 
             # Find the minimum possible dtype for ASCII integers
-            if(data_type is not None) and ('ASCII' in data_type) and is_pds_integer_data(data=data):
+            if(data_type is not None) and data_type.issubtype('ASCII') and is_pds_integer_data(data=data):
                 dtype = get_min_integer_numpy_type(data)
 
             # Scale dtype if requested
@@ -168,14 +193,15 @@ def pds_to_numpy_type(data_type=None, data=None, field_length=None, decode_strin
     return np.dtype(dtype)
 
 
-def pds_to_builtin_type(data_type=None, data=None, decode_strings=False, scaling_factor=None, value_offset=None):
+def pds_to_builtin_type(data_type=None, data=None, decode_strings=False, decode_dates=False,
+                        scaling_factor=None, value_offset=None):
     """ Obtain a Python __builtin__ data type for PDS4 data.
 
     Either *data* or *data_type* must be provided.
 
     Parameters
     ----------
-    data_type : str or unicode, optional
+    data_type : str, unicode or PDSdtype, optional
         A PDS4 data type. If *data* is omitted, the obtained builtin data type is based on this value.
     data : array_like, optional
         A data array. If *data_type* is omitted, the obtained builtin data type is based on this value.
@@ -186,6 +212,10 @@ def pds_to_builtin_type(data_type=None, data=None, decode_strings=False, scaling
         setting will be ignored and unicode data type will be returned. If *data_type* is given and
         refers to bit-strings, then this setting will be ignored and a byte string data type will be returned.
         Defaults to False.
+    decode_dates: bool, optional
+        If True, then the returned data type will be a form of date/time when *data_type* is both given and
+        is a form of date and/or time. If False, then the returned data type will be a form of character
+        according to *decode_strings*. If *data* is given, then this setting will be ignored. Defaults to False.
     scaling_factor : int, float or None, optional
         PDS4 scaling factor. If given, the returned data type will be large enough to contain data scaled by
         this number. Defaults to None, indicating a value of 1.
@@ -202,13 +232,18 @@ def pds_to_builtin_type(data_type=None, data=None, decode_strings=False, scaling
     if (data is None) and (data_type is None):
         raise ValueError('Either data or a data_type must be provided.')
 
+    # Ensure *data_type* is a PDSdtype when given
+    if data_type is not None:
+        data_type = PDSdtype(data_type)
+
     # Detect if dealing with bit strings
-    is_bitstring_data = (data_type is not None) and ('BitString' in data_type)
+    is_bitstring_data = (data_type is not None) and data_type.issubtype('BitString')
 
     # Get unscaled type from data
     if data is not None:
         data = np.asanyarray(data)
         is_character_data = np.issubdtype(data.dtype, np.character)
+        is_datetime_data = np.issubdtype(data.dtype, np.datetime64)
 
         if is_character_data:
             unicode_requested = decode_strings and not is_bitstring_data
@@ -219,17 +254,22 @@ def pds_to_builtin_type(data_type=None, data=None, decode_strings=False, scaling
 
     # Get unscaled type from meta data
     else:
-        numeric_types = PDS_NUMERIC_TYPES.get(data_type, None)
-        is_character_data = numeric_types is None
+        numeric_types = PDS_NUMERIC_TYPES.get(data_type.name, None)
+        datetime_types = PDS4_DATE_TYPES.get(data_type.name, None)
+        is_datetime_data = (datetime_types is not None) and decode_dates
+        is_character_data = (numeric_types is None) and (not is_datetime_data)
 
         if is_character_data:
             _type = six.text_type if (decode_strings and not is_bitstring_data) else six.binary_type
+
+        elif is_datetime_data:
+            _type = getattr(dt, datetime_types[2])
 
         else:
             _type = getattr(builtins, numeric_types[2])
 
     # Get scaled data type for numeric data (if necessary)
-    if not is_character_data:
+    if (not is_character_data) and (not is_datetime_data):
 
         has_scaling = (scaling_factor is not None) or (value_offset is not None)
         kwargs = {'scaling_factor': scaling_factor, 'value_offset': value_offset}
@@ -265,7 +305,7 @@ def numpy_to_pds_type(dtype, ascii_numerics=False):
 
     Returns
     -------
-    str or unicode
+    PDSdtype
         A PDS4 data type that could plausibly (see description above) correspond to the input dtype.
     """
 
@@ -276,6 +316,10 @@ def numpy_to_pds_type(dtype, ascii_numerics=False):
     elif np.issubdtype(dtype, np.string_):
         data_type = 'ASCII_String'
 
+    # For datetime dtypes
+    elif np.issubdtype(dtype, np.datetime64):
+        data_type = 'ASCII_Date_Time_YMD'
+
     # For numeric dtypes
     else:
 
@@ -283,7 +327,7 @@ def numpy_to_pds_type(dtype, ascii_numerics=False):
         # e.g. 'int16' to 'int64' it would fail but for ASCII types this should succeed.
         ascii_types = dict((value[2], key)
                            for key, value in six.iteritems(PDS_NUMERIC_TYPES)
-                           if ('ASCII' in key)and ('Numeric_Base' not in key))
+                           if ('ASCII' in key) and ('Numeric_Base' not in key))
 
         # Get numeric non-ASCII types, including the correct endianness.
         non_ascii_types = dict((np.dtype(value[1]).newbyteorder(value[0]), key)
@@ -304,7 +348,7 @@ def numpy_to_pds_type(dtype, ascii_numerics=False):
         raise ValueError("Unable to convert NumPy data type, '{0}', to a PDS4 {1} data type.".
                          format(dtype, 'ASCII' if ascii_numerics else 'binary'))
 
-    return data_type
+    return PDSdtype(data_type)
 
 
 def pds_to_numpy_name(name):
@@ -338,7 +382,7 @@ def data_type_convert_array(data_type, byte_string):
 
     Parameters
     ----------
-    data_type : str or unicode
+    data_type : str, unicode or PDSdtype
         The PDS4 data type that the data should be cast to.
     byte_string : str, bytes or buffer
         PDS4 byte string data for an array data structure or a table binary field.
@@ -368,7 +412,7 @@ def data_type_convert_table_ascii(data_type, data, mask_numeric_nulls=False, dec
 
     Parameters
     ----------
-    data_type : str or unicode
+    data_type : str, unicode or PDSdtype
         The PDS4 data type that the data should be cast to.
     data : array_like[str or bytes]
         Flat array of PDS4 byte strings from a Table_Character data structure.
@@ -386,6 +430,9 @@ def data_type_convert_table_ascii(data_type, data, mask_numeric_nulls=False, dec
     np.ndarray
         Data cast from a byte string array into a values array having the right data type.
     """
+
+    # Ensure *data_type* is a PDSdtype
+    data_type = PDSdtype(data_type)
 
     # Obtain dtype that these data will take
     dtype = pds_to_numpy_type(data_type, decode_strings=decode_strings)
@@ -434,7 +481,7 @@ def data_type_convert_table_ascii(data_type, data, mask_numeric_nulls=False, dec
             numeric_base = {'ASCII_Numeric_Base2': 2,
                             'ASCII_Numeric_Base8': 8,
                             'ASCII_Numeric_Base16': 16,
-                            }.get(data_type, 10)
+                            }.get(data_type.name, 10)
 
             # We can use NumPy to convert floats to a numeric type, but not integers. The latter is because
             # in case an integer does not fit into a NumPy C-type (since all ascii integer types are unbounded
@@ -492,7 +539,7 @@ def data_type_convert_table_binary(data_type, data, decode_strings=False):
 
     Parameters
     ----------
-    data_type : str or unicode
+    data_type : str, unicode or PDSdtype
         The PDS4 data type that the data should be cast to.
     data : array_like[str or bytes]
         Flat array of PDS4 byte strings from a Table_Binary data structure.
@@ -507,8 +554,11 @@ def data_type_convert_table_binary(data_type, data, decode_strings=False):
         Data cast from a byte string array into a values array having the right data type.
     """
 
+    # Ensure *data_type* is a PDSdtype
+    data_type = PDSdtype(data_type)
+
     # Convert binary data types
-    if (data_type in PDS_NUMERIC_TYPES) and ('ASCII' not in data_type):
+    if data_type.issubtype('binary'):
 
         # Join data array-like back into a byte_string, then cast to bytearray to ensure mutability
         byte_string = bytearray(b''.join(data))
@@ -520,6 +570,162 @@ def data_type_convert_table_binary(data_type, data, decode_strings=False):
         data = data_type_convert_table_ascii(data_type, data, decode_strings=decode_strings)
 
     return data
+
+
+def data_type_convert_dates(data, data_type=None, mask_nulls=False):
+    """
+    Cast an array of datetime strings originating from a PDS4 Table data structure to an array having
+    NumPy datetime64 dtype.
+
+    Parameters
+    ----------
+    data : array_like[str or bytes]
+        Flat array of datetime strings in a PDS4-compatible form.
+    data_type : str, unicode or PDSdtype, optional
+        The PDS4 data type for the *data*. If omitted, will be obtained from the meta_data of *data*.
+    mask_nulls : bool, optional
+        If True, then *data* may contain empty values. If such nulls are found, they will be masked out and
+        a masked array will be returned. Defaults to False, in which case an exception will be raised should
+        an empty value be found.
+
+    Returns
+    -------
+    np.ndarray, np.ma.MaskedArray or subclass
+        Data cast from a string-like array to a datetime array. If null values are found, an
+        ``np.ma.MaskedArray`` or subclass view will be returned. When the input is an instance of PDS_array,
+        the output will be as well.
+    """
+
+    from .data import PDS_array
+
+    # Ensure data is a NumPy array
+    data = np.asanyarray(data)
+
+    # Determine the PDS4 data type of our data
+    meta_data = getattr(data, 'meta_data', {})
+
+    if (data_type is None) and (not meta_data):
+        raise ValueError('Input must either contain meta_data, or *data_type* must be given.')
+
+    data_type = PDSdtype(meta_data.data_type() if (data_type is None) else data_type)
+    if not data_type.issubtype('datetime'):
+        raise TypeError('Unknown PDS4 Date type: {0}'.format(data_type))
+
+    # Determine all possible date formats allowed by the PDS4 data type
+    # (The PDS4 standard allows truncating the format string of each date format until only a year remains.)
+    dtype = pds_to_numpy_type(data_type, decode_dates=True)
+    format = PDS4_DATE_TYPES[data_type.name][3]
+    formats = [format]
+    chars = ['.', ':', 'T', '-']
+    idx = 0
+
+    while idx < len(chars):
+
+        char = chars[idx]
+        prev_format = formats[-1]
+        new_format = (prev_format.rsplit(char, 1))[0]
+
+        if new_format not in formats:
+            formats.append(new_format)
+
+        if new_format.count(char) == 0:
+            idx += 1
+
+    # Build a dict where each key corresponds to the length of a datetime for that format, and each value
+    # corresponds to the format. I.e., allow translation between datetime length and its format.
+    symbol_lengths = {'%Y': 4, '%j': 3, '%m': 2, '%d': 2, '%H': 2, '%M': 2, '%S': 2, '%f': 0}
+    format_lengths = {}
+
+    for _format in formats:
+
+        _edited_format = _format
+        for k, v in six.iteritems(symbol_lengths):
+
+            if k in _edited_format:
+                _edited_format = _edited_format.replace(k,  ' ' * v)
+
+        format_lengths[len(_edited_format)] = _format
+
+    # Adjust above format length dict to account for the variable number of fraction seconds (up to 6 allowed)
+    if '%f' in format:
+
+        for i in range(0, 6):
+            format_lengths[max(format_lengths.keys()) + i] = format
+
+    # Decode input from bytes into strings, when necessary
+    if (not six.PY2) and (data.dtype.char == 'S'):
+        data = decode_bytes_to_unicode(data)
+
+    # Determine the format of the first data point
+    # (We strip any leading/trailing spaces and UTC indicator. The latter would double our search space.)
+    first_datum = data[0].strip(' Z')
+    format_guess = format_lengths.get(len(first_datum), '')
+
+    # Try assuming that all dates have the same format and no special constants
+    # (speeding up the conversion, if true)
+    try:
+
+        dates = np.empty(len(data), dtype=dtype)
+
+        for i, datum in enumerate(data):
+            datum = datum.strip(' Z')
+            dates[i] = dt.datetime.strptime(datum, format_guess)
+
+    # If dates do not all have same format or have Special_Constants
+    except ValueError:
+
+        # Search for and mask any Special_Constants
+        special_constants = meta_data.get('Special_Constants', {})
+
+        if mask_nulls:
+            special_constants['null_constant'] = ''
+
+        data = mask_special_constants(data, special_constants=special_constants, mask_strings=True, copy=False)
+
+        try:
+
+            import time
+            start_time = time.time()
+
+            dates = np.empty(len(data), dtype=dtype)
+
+            # If there are Special_Constants. Dates may also different formats, length is used for each
+            # datetime string to determine possible format.
+            if isinstance(data, np.ma.MaskedArray) and data.mask.any():
+
+                dates = dates.view(np.ma.MaskedArray)
+                dates.mask = data.mask
+
+                for i, datum in enumerate(data):
+
+                    if not isinstance(datum, np.ma.core.MaskedConstant):
+                        datum_strip = datum.strip(' Z')
+                        date = dt.datetime.strptime(datum_strip, format_lengths[len(datum_strip)])
+
+                        dates[i] = np.datetime64(date)
+
+            # If there are no Special_Constants, but dates have different formats then use length of each
+            # datetime string to determine possible format. (This is mostly an optimized-case, which runs
+            # more than 2x speed.)
+            else:
+
+                for i, datum in enumerate(data):
+                    datum_strip = datum.strip(' Z')
+                    date = dt.datetime.strptime(datum_strip, format_lengths[len(datum_strip)])
+
+                    dates[i] = np.datetime64(date)
+
+            print("--- %s seconds ---" % (time.time() - start_time))
+
+        except (ValueError, KeyError):
+            raise ValueError("Unable to format date value, '{0}', according to PDS4 {1} data type.".
+                             format(datum.strip(), data_type))
+
+    # Convert output back to PDS_array as necessary
+    if meta_data:
+        dates = PDS_array(dates, meta_data)
+
+    return dates
 
 
 def apply_scaling_and_value_offset(data, scaling_factor=None, value_offset=None, special_constants=None):
@@ -636,7 +842,7 @@ def get_scaled_numpy_type(data_type=None, data=None, scaling_factor=None, value_
 
     Parameters
     ----------
-    data_type : str or unicode, optional
+    data_type : str, unicode or PDSdtype, optional
         If given, specifies the initial PDS4 data type that the unscaled data has or would have.
     data : array_like or None, optional
         If given, an array of data. When given, the initial data type for the unscaled data will be taken
@@ -734,9 +940,11 @@ def mask_special_constants(data, special_constants, mask_strings=False, copy=Fal
 
     Notes
     -----
-    The match between special constant value and data value (to mask it out) in this method is simplistic
-    and based on the NumPy implementation of equality. Currently the PDS4 Standard does not provide enough
-    clarity on how this match should be done.
+    The match between special constant value and data value (to mask it out) in this method is simplistic.
+    For numeric values, it is based on the NumPy implementation of equality. For string values, the match is
+    done by trimming leading/trailing whitespaces in both data value and special constant, then comparing for
+    exact equality. Currently the PDS4 Standard does not provide enough clarity on how Special_Constant
+    matching should truly be done.
 
     Parameters
     ----------
@@ -768,12 +976,40 @@ def mask_special_constants(data, special_constants, mask_strings=False, copy=Fal
     if (not mask_strings) and np.issubdtype(data.dtype, np.character):
         return data
 
-    for key, value in six.iteritems(special_constants):
+    # Mask string values
+    if np.issubdtype(data.dtype, np.character):
 
-        # Mask the Special_Constants, except for valid_* constants (which are actually valid data)
-        if not key.startswith('valid_'):
-            data = np.ma.masked_where(data == value, data, copy=copy)
-            data.set_fill_value(value)
+        # Match string-like Special_Constants after trimming leading/trailing spaces
+        # (however the returned data will preserve whitespace)
+        data_trimmed = np.char.strip(data)
+        mask_array = np.zeros(0)
+
+        for key, value in six.iteritems(special_constants):
+
+            # Find which values should be masked, ignoring valid_* constants (which are actually valid data)
+            if not key.startswith('valid_'):
+                mask_array = np.ma.masked_where(data_trimmed == value.strip(), data, copy=False).mask
+
+            # Mask as needed
+            if mask_array.any():
+                data = np.ma.masked_where(mask_array, data, copy=copy)
+                data.set_fill_value(value)
+
+    # Mask numeric values
+    else:
+
+        for key, value in six.iteritems(special_constants):
+
+            # The data == value equality check below only works on similar data types, otherwise it will raise
+            # warnings/errors. Thus we circumvent this by assuming equality is False when this is guaranteed.
+            compatible_dtypes = (data.dtype.kind == np.asarray(value).dtype.kind) or \
+                                (data.dtype.kind in 'fui' and np.asarray(value).dtype.kind in 'ui') or \
+                                (data.dtype == np.object) or (np.asarray(value).dtype == np.object)
+
+            # Mask the Special_Constants, except for valid_* constants (which are actually valid data)
+            if (not key.startswith('valid_')) and compatible_dtypes:
+                data = np.ma.masked_where(data == value, data, copy=copy)
+                data.set_fill_value(value)
 
     return data
 
@@ -861,7 +1097,7 @@ def is_pds_integer_data(data=None, pds_data_type=None):
     ----------
     data : array_like, optional
         If given, checks whether this data is integer data.
-    pds_data_type
+    pds_data_type : str, unicode or PDSdtype, optional
         If given, checks whether this PDS data type corresponds to integer data.
 
     Returns
@@ -907,3 +1143,160 @@ def is_pds_integer_data(data=None, pds_data_type=None):
         return array_is_integer and pds_type_is_integer
 
     return array_is_integer or pds_type_is_integer
+
+
+@six.python_2_unicode_compatible
+class PDSdtype(object):
+    """ A PDS4 data type object.
+
+    Each PDS4 array and table field contains homogeneous values described by a PDSdtype
+    object. This class is a wrapper around the named PDS4 data types, to make comparison
+    of types easier.
+    """
+
+    _name = None
+
+    def __new__(cls, name):
+        """ Convert input into a PDS4 data type object.
+
+        Notes
+        -----
+        No checking is currently done that the input is a valid PDS4 data type.
+
+        Parameters
+        ----------
+        name : str, unicode or PDSdtype
+            A PDS4 data type.
+
+        Returns
+        -------
+        PDSdtype
+            A PDS4 data type object.
+        """
+
+        if isinstance(name, cls):
+            return name
+
+        elif isinstance(name, six.string_types):
+            obj = super(PDSdtype, cls).__new__(cls)
+            obj._name = name
+
+            return obj
+
+        raise ValueError('Unknown data_type; must be a string or PDSdtype.')
+
+    @property
+    def name(self):
+        """
+        Returns
+        -------
+        str or unicode
+            The PDS4 data type name.
+        """
+        return self._name
+
+    def __str__(self):
+        """
+        Returns
+        -------
+        str or unicode
+            A str representation of the object.
+        """
+        return six.text_type(self.name)
+
+    def __repr__(self):
+        """
+        Returns
+        -------
+        str
+            A repr representation of the object.
+        """
+        return "{0}({1})".format(self.__class__.__name__, repr(self.name))
+
+    def __eq__(self, other):
+        """ Compare if two data types are equal.
+
+        Parameters
+        ----------
+        other : str, unicode or PDSdtype
+            A PDS4 data type.
+
+        Returns
+        -------
+        bool
+            True if the data types are equal. PDSdtype objects are equal when their ``name`` attributes
+            are identical, or if *other* is str-like then when it is equal to the object's ``name`` attribute.
+        """
+
+        if isinstance(other, PDSdtype):
+            is_equal = other.name == self.name
+        else:
+            is_equal = other == self.name
+
+        return is_equal
+
+    def __contains__(self, other):
+        """ Check if a data type contains another.
+
+        Parameters
+        ----------
+        other : str, unicode or PDSdtype
+            A PDS4 data type.
+
+        Returns
+        -------
+        bool
+            True if ``name`` contains at least a portion of *other*.
+        """
+
+        if isinstance(other, PDSdtype):
+            contains = other.name in self.name
+        else:
+            contains = other in self.name
+
+        return contains
+
+    def issubtype(self, subtype):
+        """ Check if data type is a sub-type.
+
+        Parameters
+        ----------
+        subtype : str or unicode
+            Valid subtypes are int|integer|float|bool|datetime|bitstring|ascii|binary.
+            Case-insensitive.
+
+        Returns
+        -------
+        bool
+            True if ``name`` is a sub-type of *subtype*. False otherwise.
+
+        Raises
+        ------
+        ValueError
+            Raised if an unknown subtype is specified.
+        TypeError
+            Raised if a non-string-like subtype is specified.
+        """
+
+        if isinstance(subtype, six.string_types):
+
+            subtype = subtype.lower()
+
+            if subtype in ('int', 'integer'):
+                return pds_to_builtin_type(self._name) == builtins.int
+
+            elif subtype in ('float', 'bool'):
+                return pds_to_builtin_type(self._name) == getattr(builtins, subtype)
+
+            elif subtype == 'datetime':
+                return pds_to_builtin_type(self._name, decode_dates=True) in (dt.datetime, dt.date, dt.time)
+
+            elif subtype in ('bitstring', 'ascii'):
+                return subtype in self._name.lower()
+
+            elif subtype == 'binary':
+                return (self._name in PDS_NUMERIC_TYPES) and ('ascii' not in self._name.lower())
+
+            raise ValueError('Unknown subtype specified: {0}'.format(subtype))
+
+        raise TypeError('Subtype must be string-like.')
