@@ -5,7 +5,7 @@ from __future__ import unicode_literals
 
 import abc
 
-from .core import SearchableTextWindow
+from .core import Window, SearchableTextWindowMixIn
 from .widgets.tree import TreeView
 
 from ..reader.label_objects import (get_mission_area, get_discipline_area,
@@ -16,13 +16,13 @@ from ..extern.six.moves.tkinter import Menu, Text, BooleanVar, StringVar
 
 
 @six.add_metaclass(abc.ABCMeta)
-class LabelWindow(SearchableTextWindow):
+class LabelWindow(SearchableTextWindowMixIn, Window):
     """ Base class; Window used to display the content of a label """
 
     def __init__(self, viewer, full_label, structure_label=None, initial_display='full label'):
 
         # Set initial necessary variables and do other required initialization procedures
-        super(LabelWindow, self).__init__(viewer, header='Label')
+        super(LabelWindow, self).__init__(viewer)
 
         # Set instance variables
         self.full_label = full_label
@@ -43,20 +43,31 @@ class LabelWindow(SearchableTextWindow):
         self._menu_options['pretty_print'] = pretty_print
         self._add_trace(pretty_print, 'w', self._update_label, default=True)
 
-        # Add menu options for label manipulation
-        self._add_label_menus()
+        # Draw the main window content
+        self._set_heading('Label')
+        self._draw_content()
 
+        # Add notify event for scroll wheel (used to scroll via scroll wheel without focus)
+        self._bind_scroll_event(self._mousewheel_scroll)
+
+        # Add menu options
+        self._add_menus()
         self._center_and_fit_to_content()
         self._show_window()
 
     # Adds menu options used for manipulating the label display
-    def _add_label_menus(self):
+    def _add_menus(self):
 
-        super(LabelWindow, self)._add_menu()
+        # Add a File Menu
+        file_menu = self._add_menu('File', in_menu='main')
+        file_menu.add_command(label='Close', command=self.close)
+        file_menu.add_command(label='Close All', command=self._viewer.quit)
+
+        # Add an Edit Menu
+        super(LabelWindow, self)._add_menus()
 
         # Add View Menu
-        view_menu = Menu(self._menu, tearoff=0)
-        self._menu.add_cascade(label='View', menu=view_menu)
+        view_menu = self._add_menu('View', in_menu='main')
 
         for display_type in self._display_types:
 
@@ -141,12 +152,12 @@ class LabelTreeViewWindow(LabelWindow):
         self._update_label()
 
     # Adds menu options used for manipulating the label display
-    def _add_label_menus(self):
+    def _add_menus(self):
 
-        super(LabelTreeViewWindow, self)._add_label_menus()
+        super(LabelTreeViewWindow, self)._add_menus()
 
         # Append to View menu
-        view_menu = self._menu.winfo_children()[-1]
+        view_menu = self._menu('View')
         view_menu.add_separator()
 
         view_menu.add_command(label='Show XML Label', command=lambda:
@@ -225,13 +236,12 @@ class LabelXMLWindow(LabelWindow):
         self._update_label()
 
     # Adds menu options used for manipulating the label display
-    def _add_label_menus(self):
+    def _add_menus(self):
 
-        super(LabelXMLWindow, self)._add_label_menus()
+        super(LabelXMLWindow, self)._add_menus()
 
-        # Create Options Menu
-        options_menu = Menu(self._menu, tearoff=0)
-        self._menu.insert_cascade(self._menu.index('last'), label='Options', menu=options_menu)
+        # Add an Options Menu
+        options_menu = self._add_menu('Options', in_menu='main', index='last')
 
         options_menu.add_checkbutton(label='Format Label', onvalue=True, offvalue=False,
                                      variable=self._menu_options['pretty_print'])

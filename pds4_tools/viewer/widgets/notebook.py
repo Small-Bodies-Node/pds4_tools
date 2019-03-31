@@ -5,13 +5,8 @@ from __future__ import unicode_literals
 
 import platform
 
+from ...utils.compat import OrderedDict
 from ...extern.six.moves.tkinter import Frame, Button
-
-# Safe import of OrderedDict
-try:
-    from collections import OrderedDict
-except ImportError:
-    from ...extern.ordered_dict import OrderedDict
 
 
 _BASE = 'raised'

@@ -3,7 +3,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from ...extern.six.moves.tkinter import Toplevel, Label
+from ...extern.six.moves.tkinter import Toplevel, Label, TclError
 
 
 class ToolTip(object):
@@ -51,18 +51,28 @@ class ToolTip(object):
 
     # Show the tooltip
     def show_tip(self):
+
         if self._tip_window:
             return
+
         # The tip window must be completely outside the button;
         # otherwise when the mouse enters the tip window we get
         # a leave event and it disappears, and then we get an enter
         # event and it reappears, and so on forever :-(
         x = self._widget.winfo_rootx() + 20
         y = self._widget.winfo_rooty() + self._widget.winfo_height() + 1
-        self._tip_window = tw = Toplevel(self._widget)
-        tw.wm_overrideredirect(1)
-        tw.wm_geometry("+%d+%d" % (x, y))
+        self._tip_window = Toplevel(self._widget)
+        self._tip_window.wm_overrideredirect(1)
+        self._tip_window.wm_geometry("+%d+%d" % (x, y))
+
         self.show_contents()
+
+        # Work around bug in Tk 8.5.18+ on OSX
+        try:
+            self._tip_window.update_idletasks()
+            self._tip_window.lift()
+        except (TclError, AttributeError):
+            pass
 
     # Contains the contents of the tooltip
     def show_contents(self):

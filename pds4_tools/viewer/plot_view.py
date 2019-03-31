@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 
 import os
 import re
+import copy
 import platform
 import functools
 import itertools
@@ -12,28 +13,24 @@ from fractions import Fraction
 
 import numpy as np
 import matplotlib as mpl
-from matplotlib.backends.backend_tkagg import NavigationToolbar2TkAgg
 from matplotlib.figure import Figure
 
-from . import cache
-from .core import DataViewWindow, Window
-from .mpl import (FigureCanvas, get_mpl_linestyles, get_mpl_markerstyles, mpl_color_to_hex,
-                  mpl_color_to_inverted_rgb)
+from . import label_view, cache
+from .core import DataViewWindow, MessageWindow, Window
+from .mpl import (FigureCanvas, MPLCompat, get_mpl_linestyles, get_mpl_markerstyles,
+                  mpl_color_to_hex, mpl_color_to_inverted_rgb)
 from .widgets.notebook import TabBar, Tab
 
-from ..reader.data_types import is_pds_integer_data
+from ..reader.data_types import is_pds_integer_data, data_type_convert_dates
+from ..reader.table_objects import Meta_Field
+
+from ..utils.compat import OrderedDict
 
 from ..extern import six
 from ..extern.six.moves import tkinter_colorchooser
 from ..extern.six.moves.tkinter import (Menu, Frame, Scrollbar, Listbox, Label, Entry, Button, Checkbutton,
                                         OptionMenu, DoubleVar, IntVar, BooleanVar, StringVar)
 from ..extern.six.moves.tkinter_tkfiledialog import asksaveasfilename
-
-# Safe import of OrderedDict
-try:
-    from collections import OrderedDict
-except ImportError:
-    from ..extern.ordered_dict import OrderedDict
 
 #################################
 
@@ -45,10 +42,10 @@ class PlotViewWindow(DataViewWindow):
     the table that it needs to display.
     """
 
-    def __init__(self, parent):
+    def __init__(self, viewer):
 
         # Create basic data view window
-        super(PlotViewWindow, self).__init__(parent)
+        super(PlotViewWindow, self).__init__(viewer)
 
         # Pack the display frame, which contains the scrollbars and the scrollable canvas
         self._display_frame.pack(side='left', anchor='nw', expand=1, fill='both')
@@ -66,8 +63,7 @@ class PlotViewWindow(DataViewWindow):
         # Will be set to an instance of MPL's toolbar for TK
         self._toolbar = None
 
-        # Will contain a dict for each line being plotted, where each dict contains the MPL Line2D and the
-        # error bar's MPL Line2D and MPL LineCollection. See details where variable is initialized.
+        # Will contain _Series objects, which describe each line/point series added to the plot
         self.series = []
 
         # Contains sub-widgets of the header
@@ -101,6 +97,14 @@ class PlotViewWindow(DataViewWindow):
             self._menu_options[option['name']] = var
 
             self._add_trace(var, 'w', option['trace'], option['default'])
+
+    @property
+    def settings(self):
+
+        settings = super(PlotViewWindow, self).settings
+        settings['labels'] = copy.deepcopy(settings['labels'])
+
+        return settings
 
     # Loads the table structure into this window, displays a plot for the selected axes. axis_selections
     # is a list of field indexes in the table to use for the plot in the order x,y,x_err,y_err; to have one
@@ -169,8 +173,12 @@ class PlotViewWindow(DataViewWindow):
         # Add notify event for mouse motion (used to display pixel location under pointer)
         self._figure_canvas.mpl_canvas.mpl_connect('motion_notify_event', self._update_mouse_pixel_value)
 
-        self._add_menu()
+        self._add_menus()
         self._data_open = True
+
+    # Current enlarge level. E.g., a value of 2 means double the dimensions of the original plot.
+    def get_enlarge_level(self):
+        return self.menu_option('enlarge_level')
 
     # Current title. By default a string is returned; if mpl_text is True, an MPL text object for the title
     # label is returned instead. If the if_visible parameter is true, the title is returned only if it
@@ -226,7 +234,6 @@ class PlotViewWindow(DataViewWindow):
 
         # Gather proper tick labels
         tick_labels = []
-        which = 'minor'
 
         if (not if_visible) or self.is_tick_labels_shown(axis):
 
@@ -624,10 +631,7 @@ class PlotViewWindow(DataViewWindow):
         ax = self._plot.axes
 
         # Set background color of middle portion of the plot (where the data lines are)
-        try:
-            ax.set_facecolor(plot_background)
-        except AttributeError:
-            ax.set_axis_bgcolor(plot_background)
+        MPLCompat.axis_set_facecolor(ax, plot_background)
 
         # Set background color for outside portion of the plot (where axes are)
         self._figure_canvas.mpl_figure.set_facecolor(axes_background)
@@ -931,17 +935,16 @@ class PlotViewWindow(DataViewWindow):
             self._update_scrollable_canvas_dimensions()
 
     # Adds menu options used for manipulating the data display
-    def _add_menu(self):
+    def _add_menus(self):
 
-        # Adds Save Plot option to the File menu
-        file_menu = self._menu.winfo_children()[0]
+        # Add Save Plot option to the File menu
+        file_menu = self._menu('File', in_menu='main')
         file_menu.insert_command(0, label='Save Plot', command=self._save_file_box)
 
         file_menu.insert_separator(1)
 
         # Add a Data menu
-        data_menu = Menu(self._menu, tearoff=0)
-        self._menu.add_cascade(label='Data', menu=data_menu)
+        data_menu = self._add_menu('Data', in_menu='main')
 
         data_menu.add_command(label='Lines / Points',
                               command=lambda: self._open_plot_options('Lines / Points'))
@@ -952,8 +955,7 @@ class PlotViewWindow(DataViewWindow):
                               command=lambda: self._open_plot_options('Error Bars'))
 
         # Add an Axes menu
-        axes_menu = Menu(self._menu, tearoff=0)
-        self._menu.add_cascade(label='Axes', menu=axes_menu)
+        axes_menu = self._add_menu('Axes', in_menu='main')
 
         axes_menu.add_checkbutton(label='Tight Limits', onvalue='tight', offvalue='manual',
                                         variable=self._menu_options['axis_limits'])
@@ -983,8 +985,7 @@ class PlotViewWindow(DataViewWindow):
         axes_menu.add_separator()
 
         # Add an Axis Scaling sub-menu to the Axes menu
-        axis_scaling_menu = Menu(axes_menu, tearoff=0)
-        axes_menu.add_cascade(label='Axis Scaling', menu=axis_scaling_menu)
+        axis_scaling_menu = self._add_menu('Axis Scaling', in_menu='Axes')
 
         axis_scaling = OrderedDict([('Linear-Linear', 'linear-linear'), ('Log-Log', 'log-log'),
                                     ('SymLog-SymLog', 'symlog-symlog'),
@@ -999,8 +1000,7 @@ class PlotViewWindow(DataViewWindow):
                                               variable=self._menu_options['axis_scaling'])
 
         # Add a Chart menu
-        chart_menu = Menu(self._menu, tearoff=0)
-        self._menu.add_cascade(label='Chart', menu=chart_menu)
+        chart_menu = self._add_menu('Chart', in_menu='main')
 
         # grid_menu.add_separator()
         #
@@ -1014,8 +1014,7 @@ class PlotViewWindow(DataViewWindow):
         chart_menu.add_separator()
 
         # Add a Grid sub-menu to the Chart menu
-        grid_menu = Menu(chart_menu, tearoff=0)
-        chart_menu.add_cascade(label='Grid', menu=grid_menu)
+        grid_menu = self._add_menu('Grid', in_menu='Chart')
 
         grid_menu.add_checkbutton(label='Show Major Grid', onvalue=True, offvalue=False,
                                   variable=self._menu_options['show_major_grid'])
@@ -1032,8 +1031,7 @@ class PlotViewWindow(DataViewWindow):
         chart_menu.add_separator()
 
         # Add a Ticks sub-menu to the Chart menu
-        ticks_menu = Menu(self._menu, tearoff=0)
-        chart_menu.add_cascade(label='Ticks', menu=ticks_menu)
+        ticks_menu = self._add_menu('Ticks', in_menu='Chart')
 
         ticks_menu.add_checkbutton(label='Inward Facing Ticks', onvalue='in', offvalue='in',
                                    variable=self._menu_options['tick_direction'])
@@ -1055,8 +1053,7 @@ class PlotViewWindow(DataViewWindow):
         chart_menu.add_separator()
 
         # Add a Legend sub-menu to the Chart menu
-        # legend_menu = Menu(chart_menu, tearoff=0)
-        # chart_menu.add_cascade(label='Legend', menu=legend_menu)
+        # legend_menu = self._add_menu('Legend', in_menu='Chart')
         #
         # legend_menu.add_checkbutton(label='Show Legend', onvalue=True, offvalue=False,
         #                             variable=self._menu_options['show_legend'])
@@ -1078,8 +1075,7 @@ class PlotViewWindow(DataViewWindow):
         chart_menu.add_command(label='Invert Colors', command=self.invert_colors)
 
         # Add a Labels menu
-        labels_menu = Menu(self._menu, tearoff=0)
-        self._menu.add_cascade(label='Labels', menu=labels_menu)
+        labels_menu = self._add_menu('Labels', in_menu='main')
 
         labels_menu.add_checkbutton(label='Show Title', onvalue=True, offvalue=False,
                                     variable=self._menu_options['show_title'])
@@ -1094,8 +1090,7 @@ class PlotViewWindow(DataViewWindow):
         labels_menu.add_command(label='Set Axis Labels', command=lambda: self._open_plot_options('Labels'))
 
         # Add a Size menu
-        size_menu = Menu(self._menu, tearoff=0)
-        self._menu.add_cascade(label='Size', menu=size_menu)
+        size_menu = self._add_menu('Size', in_menu='main')
 
         size_menu.add_command(label='Fit to Window Size', command=self.enlarge_to_fit)
 
@@ -1107,6 +1102,47 @@ class PlotViewWindow(DataViewWindow):
 
         size_menu.add_command(label='Enlarge Plot', command=lambda: self._enlarge('in'))
         size_menu.add_command(label='Shrink Plot', command=lambda: self._enlarge('out'))
+
+        # Add a View Menu
+        self._add_view_menu()
+
+    # Adds a view menu
+    def _add_view_menu(self):
+        self._add_menu('View', in_menu='main', postcommand=self._update_view_menu)
+
+    # Adds or updates menu options for the View menu
+    def _update_view_menu(self):
+
+        view_menu = self._menu('View')
+
+        # Delete all items in the menu
+        view_menu.delete(0, view_menu.index('last'))
+
+        # Find unique structures
+        structures = [series.structure for series in self.series]
+        unique_structures = set(structures)
+
+        # Add Labels sub-menu if necessary
+        multi_label = len(unique_structures) > 1
+        if multi_label:
+            label_menu = self._add_menu('Labels', 'View')
+
+        else:
+            label_menu = view_menu
+
+        # Add Label open button for each unique structure in plot
+        for structure in unique_structures:
+
+            labels = [structure.full_label, structure.label]
+            label_text = 'Label - {}'.format(structure.id) if multi_label else 'Label'
+
+            label_menu.add_command(label=label_text, command=lambda: label_view.open_label(
+                                   self._viewer, *labels, initial_display='object label'))
+
+        view_menu.add_separator()
+
+        view_menu.add_command(label='Warnings',
+                              command=lambda: MessageWindow(self._viewer, 'Warnings', self._warnings))
 
     # Draws the header box, which contains the pixel location that mouse pointer is over
     def _draw_header(self):
@@ -1193,7 +1229,7 @@ class PlotViewWindow(DataViewWindow):
             self._scrollable_canvas.create_window(0, 0, window=self._figure_canvas.tk_widget, anchor='nw')
 
             # Create the toolbar (hidden, used for its pan and axis-limits to rectangle options)
-            self._toolbar = NavigationToolbar2TkAgg(self._figure_canvas.mpl_canvas, self._display_frame)
+            self._toolbar = MPLCompat.NavigationToolbar2Tk(self._figure_canvas.mpl_canvas, self._display_frame)
             self._toolbar.update()
             self._toolbar.pack_forget()
 
@@ -1281,7 +1317,7 @@ class PlotViewWindow(DataViewWindow):
         if enlarge_level is None:
 
             # Obtain the current enlarge level
-            enlarge_level = self.menu_option('enlarge_level')
+            enlarge_level = self.get_enlarge_level()
 
             # Determine enlarge level when adjusted by enlarge factor
             enlarge_factor = 0.20
@@ -1303,7 +1339,7 @@ class PlotViewWindow(DataViewWindow):
         fig_size = self._settings['pixel_init_dimensions']
 
         # Change figure size by enlarge_level
-        enlarge_level = self.menu_option('enlarge_level')
+        enlarge_level = self.get_enlarge_level()
         enlarged_size = [fig_size[0] * enlarge_level,
                          fig_size[1] * enlarge_level]
 
@@ -1339,6 +1375,37 @@ class PlotViewWindow(DataViewWindow):
         enlarge_level = min(fig_size_div)
         self._enlarge(enlarge_level=enlarge_level)
 
+    # Determine if either axis is a date. Valid options for axis are x|y|both|any.
+    def _is_date_axis(self, axis):
+
+        x_date = False
+        y_date = False
+
+        # Check if any serious has datetime data
+        for _series in self.series:
+
+            if (not x_date) and _series.meta_data('x').data_type().issubtype('datetime'):
+                x_date = True
+
+            if (not y_date) and _series.meta_data('y').data_type().issubtype('datetime'):
+                y_date = True
+
+        # Return result
+        if axis == 'x':
+            return x_date
+
+        elif axis == 'y':
+            return y_date
+
+        elif axis == 'both':
+            return x_date and y_date
+
+        elif axis == 'any':
+            return x_date or y_date
+
+        else:
+            raise ValueError('Unknown axis: {0}'.format(axis))
+
     # Update axis limits setting to match the current menu_options value
     def _update_axis_limits(self, *args):
 
@@ -1348,13 +1415,11 @@ class PlotViewWindow(DataViewWindow):
         # Obtain the current axis limits settings
         axis_limits = self.menu_option('axis_limits')
 
+        # Keep track of when to reset margins (needed when turning off tight limits)
+        reset_margins = False
+
         # Set new axis limits
         ax = self._plot.axes
-
-        # Set default margins for MPL 2.x. Otherwise setting autoscale to tight permanently sets these to 0,
-        # which means that auto and intelligent limits will not work in the 'data' autolimit mode.
-        if mpl.rcParams.get('axes.autolimit_mode') == 'data':
-            ax.margins(x=0.05, y=0.05)
 
         # Disable pan and axis-limits to rectangle if they are enabled and we are not on manual axis limits
         if axis_limits != 'manual':
@@ -1368,26 +1433,35 @@ class PlotViewWindow(DataViewWindow):
             elif pan_option.get():
                 pan_option.set(False)
 
-        # Intelligent limits. If error bars are present, equivalent to auto scaling. Otherwise uses
-        # auto scaling for linear data, and uses tight scaling for all others.
+        # Intelligent limits. If error bars are present or only points are on, equivalent to auto scaling. Otherwise
+        # uses tight scaling for linear data, and uses auto scaling for all others.
         if axis_limits == 'intelligent':
 
             shows_error_bars = False
+            shows_only_points = False
 
             for i in range(0, len(self.series)):
 
-                if self.is_series_shown(i) and self.is_error_bar_shown(i):
+                if self.is_series_shown(i, which='points') and (not self.is_series_shown(i, which='line')):
+                    shows_only_points = True
+                    break
+
+                elif self.is_series_shown(i) and self.is_error_bar_shown(i):
                     shows_error_bars = True
                     break
 
-            if (ax.get_xscale() == 'linear') and (ax.get_yscale() == 'linear') and (not shows_error_bars):
+            if (ax.get_xscale() == 'linear') and (ax.get_yscale() == 'linear') and \
+                    (not shows_error_bars) and (not shows_only_points):
+
                 ax.autoscale(axis='both', enable=True, tight=True)
 
             else:
+                reset_margins = True
                 ax.autoscale(axis='both', enable=True, tight=False)
 
         # Automatic limits. Usually uses axis limits which are somewhat bigger than data limits.
         elif axis_limits == 'auto':
+            reset_margins = True
             ax.autoscale(axis='both', enable=True, tight=False)
 
         # Tight limits. Constrains axis limits to exactly data limits.
@@ -1399,6 +1473,11 @@ class PlotViewWindow(DataViewWindow):
 
             self._menu_options['axis_limits'].set('intelligent')
             raise ValueError('Unknown axis limits: {0}'.format(axis_limits))
+
+        # Set default margins for MPL 2+. Otherwise setting autoscale to tight permanently sets these to 0,
+        # which means that auto and intelligent limits will not work in the 'data' autolimit mode.
+        if reset_margins and (mpl.rcParams.get('axes.autolimit_mode') == 'data'):
+            ax.margins(x=0.05, y=0.05)
 
         # Update ticks to set new number of ticks
         self._update_ticks(adjust_num_ticks=True)
@@ -1427,8 +1506,11 @@ class PlotViewWindow(DataViewWindow):
             self.freeze_display()
 
             # Set new scaling of the axes
-            ax.set_xscale(x_scale)
-            ax.set_yscale(y_scale)
+            if not self._is_date_axis('x'):
+                ax.set_xscale(x_scale)
+
+            if not self._is_date_axis('y'):
+                ax.set_yscale(y_scale)
 
             # For intelligent axis limits we need to update the axis limits based on current scale type.
             # Inside this method it also updates ticks, which is necessary because setting new scaling above
@@ -1502,8 +1584,12 @@ class PlotViewWindow(DataViewWindow):
         if adjust_num_ticks and ax.get_xscale() == 'linear':
 
             # Initially we reset to default number of major ticks
-            # (ensures that when enlarging plot from a small plot, we go back to proper number of ticks)
-            self._plot.locator_params(axis='x', nbins=9)
+            # (ensures that when enlarging plot from a small plot, we go back to proper number of ticks;
+            #  we distinguish for date axes because AutoDateLocator does not support locator_params)
+            if self._is_date_axis('x'):
+                ax.xaxis.set_major_locator(mpl.dates.AutoDateLocator())
+            else:
+                self._plot.locator_params(axis='x', nbins=9, prune='both')
 
             # The correct tick labels are not given by MPL's ``Axis.get_ticklabels`` until they are drawn
             # (it will return empty text objects instead). To avoid the ugly redrawing of the plot to
@@ -1525,19 +1611,26 @@ class PlotViewWindow(DataViewWindow):
                 tick_labels = [label.get_text() for label in ax.xaxis.get_ticklabels()]
 
                 # Remove mathtext, as we do cannot actually estimate its length easily
-                tick_labels = [re.sub('\$.+\$', '', label) for label in tick_labels]
+                tick_labels = [re.sub(r'\$.+\$', '', label) for label in tick_labels]
 
                 num_label_chars = len(''.join(tick_labels))
                 num_tick_labels = len(tick_labels)
                 num_bins = num_ticks - num_iterations
+                avg_label_len = sum(map(len, tick_labels)) / num_tick_labels
+                max_density = min(20 - avg_label_len, 15)
 
                 if num_tick_labels <= 2 or num_label_chars <= 1 or num_bins <= 0:
                     break
 
                 # Adjust maximum number of ticks so that the below equation is satisfied
-                # (the specific number is chosen based on experimentation of what looks good)
-                if plot_size[0] / num_label_chars < 13:
-                    self._plot.locator_params(axis='x', nbins=num_bins)
+                # (the specific number is chosen based on experimentation of what looks good;
+                #  we distinguish for date axes because AutoDateLocator does not support locator_params)
+                if plot_size[0] / num_label_chars < max_density:
+
+                    if self._is_date_axis('x'):
+                        ax.xaxis.set_major_locator(mpl.dates.AutoDateLocator(maxticks=num_bins))
+                    else:
+                        self._plot.locator_params(axis='x', nbins=num_bins, prune='both')
 
                 else:
                     break
@@ -1547,15 +1640,9 @@ class PlotViewWindow(DataViewWindow):
         # Set new minor tick settings (show / hide, direction and size)
         if show_minor_ticks:
 
-            # Work around MPL 1.5x-2.0x bug with symlog and minorticks resulting in exception
-            # Disables minor ticks when symlog is on. Should be removed as soon as MPL releases a version
-            # where symlog and minorticks work correctly
-            # See: https://github.com/matplotlib/matplotlib/issues/6967
-            x_scale, y_scale = self.menu_option('axis_scaling').split('-')
-
             # Enable minor ticks
-            if 'symlog' not in (x_scale, y_scale):
-                ax.minorticks_on()
+            ax.minorticks_on()
+
             ax.tick_params(axis='both', which='minor', direction=tick_direction,
                            bottom=True, top=True, left=True, right=True,
                            length=minor_tick_length, width=0.5)
@@ -1573,7 +1660,7 @@ class PlotViewWindow(DataViewWindow):
             # minor grid lines will not appear when minor ticks are off.
             ax.tick_params(axis='both', which='minor', length=0, width=0)
 
-        # Remove offset and scientific notation when tic labels are not shown
+        # Remove offset and scientific notation when tick labels are not shown
         for axis_name, axis_select in six.iteritems({'x': ax.xaxis, 'y': ax.yaxis}):
 
             if isinstance(axis_select.get_major_formatter(), mpl.ticker.ScalarFormatter):
@@ -1777,6 +1864,8 @@ class PlotViewWindow(DataViewWindow):
 
     def close(self):
 
+        self.series = None
+
         if self._toolbar is not None:
             self._toolbar = None
 
@@ -1900,7 +1989,7 @@ class PlotOptionsWindow(Window):
 
             else:
 
-                plot_label_mpl = self._structure_window.get_tick_labels(axis='x', mpl_text=True)[0]
+                plot_label_mpl = self._structure_window.get_tick_labels(axis='x', which='major', mpl_text=True)[0]
                 plot_label = self._structure_window.get_tick_labels(axis='x', mpl_text=False)[0]
                 show_label = self._structure_window.is_tick_labels_shown('both')
 
@@ -2579,7 +2668,7 @@ class PlotOptionsWindow(Window):
         # Update colors of Grid lines
         self._structure_window.set_grid_options(which='both', color=color_opts['grid'].get())
 
-        # Update axis limits and scales
+        # Update axis limits
         axes_opts = self._axes_options
         axis_limits = axes_opts['axis_limits'].get().lower()
 
@@ -2592,6 +2681,7 @@ class PlotOptionsWindow(Window):
 
             self._structure_window.set_axis_limits(auto=axis_limits)
 
+        # Update axis scaling
         self._structure_window.set_axis_scaling(x=axes_opts['axis_scale_x'].get().lower(),
                                                 y=axes_opts['axis_scale_y'].get().lower())
 
@@ -2692,8 +2782,9 @@ class PlotColumnsWindow(Window):
             # Disable non-numeric fields, fields with more than one dimension and fields with only one value
             is_flat_array = (len(field.shape) == 1) and (field.size > 1)
             is_numeric_array = np.issubdtype(field.dtype, np.floating) or is_pds_integer_data(data=field)
+            is_date_array = field.meta_data.data_type().issubtype('datetime')
 
-            if (not is_flat_array) or (not is_numeric_array):
+            if (not is_flat_array) or (not is_numeric_array and not is_date_array):
                 self._disabled_indexes.append(i+1)
                 self._field_listbox.itemconfig(i + 1, {'fg': '#999999', 'selectforeground': '#999999',
                                                'selectbackground': self._field_listbox.cget('background')})
@@ -2910,11 +3001,15 @@ class _Series(object):
 
             data = self.structure.fields[axis_selection]
 
-            if masked:
+            if data.meta_data.data_type().issubtype('datetime'):
+                data = data_type_convert_dates(data)
 
-                mask = self._get_normalized_mask()
-                if mask is not np.ma.nomask:
-                    data = data[np.invert(mask)]
+        # "Mask" data if requested
+        if masked and (data is not None):
+
+            mask = self._get_normalized_mask()
+            if mask is not np.ma.nomask:
+                data = data[np.invert(mask)]
 
         return data
 
@@ -2927,7 +3022,8 @@ class _Series(object):
             meta_data = None
 
         elif axis_selection == 'row':
-            meta_data = {'name': 'Row Number'}
+            meta_data = Meta_Field({'name': 'Row Number',
+                                    'data_type': 'object'})
 
         else:
 

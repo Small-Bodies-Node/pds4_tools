@@ -9,6 +9,6 @@ class PDS4StandardsException(Exception):
     pass
 
 
-class PDS4ToolsDeprecationWarning(DeprecationWarning):
+class PDS4ToolsDeprecationWarning(UserWarning):
     """ Custom depreciation warning issued when a depreciated PDS4 tools feature is used. """
     pass

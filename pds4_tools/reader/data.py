@@ -8,13 +8,8 @@ import numpy as np
 
 from .data_types import pds_to_numpy_name
 
+from ..utils.compat import OrderedDict
 from ..extern import six
-
-# Safe import of OrderedDict
-try:
-    from collections import OrderedDict
-except ImportError:
-    from ..extern.ordered_dict import OrderedDict
 
 
 # List of comparison functions. Used in __array_wrap__ to ensure they only

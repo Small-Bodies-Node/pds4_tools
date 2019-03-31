@@ -133,12 +133,13 @@ def zsc_fit_line (samples, npix, krej, ngrow, maxiter):
     minpix = max (MIN_NPIXELS, int (npix*MAX_REJECT))
     last_ngoodpix = npix + 1
 
+    intercept = 0
+    slope = 0
+
     # This is the mask used in k-sigma clipping.  0 is good, 1 is bad
     badpix = numpy.zeros(npix, dtype="int32")
 
-    #
     #  Iterate
-
     for niter in range(maxiter):
 
         if (ngoodpix >= last_ngoodpix) or (ngoodpix < minpix):

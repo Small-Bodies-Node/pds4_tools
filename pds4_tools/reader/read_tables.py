@@ -67,7 +67,7 @@ def _read_table_byte_data(table_structure):
             stop_byte = start_byte + object_length
 
         elif record_length is not None:
-            stop_byte = start_byte * num_records * record_length
+            stop_byte = start_byte + num_records * record_length
 
         else:
             stop_byte = -1
@@ -685,8 +685,8 @@ def new_table(fields, no_scale=False, decode_strings=False, masked=None, copy=Tr
                                             'value_offset': meta_field.get('value_offset')}
 
         # Obtain dtype (ensuring to scale it for future application of scaling and offset if necessary)
-        data_type = meta_field.get('data_type', 'ASCII_Real')
-        dtype = pds_to_numpy_type(data_type, field_length=meta_field.get('length'),
+        dtype = pds_to_numpy_type(meta_field.data_type(),
+                                  field_length=meta_field.get('length'),
                                   decode_strings=decode_strings,
                                   **dict(data_kwargs, **scale_kwargs))
 
@@ -740,7 +740,7 @@ def new_table(fields, no_scale=False, decode_strings=False, masked=None, copy=Tr
             extracted_data = field.copy() if copy else field
             meta_field = field.meta_data
             special_constants = meta_field.get('Special_Constants')
-            is_bitstring_data = 'BitString' in meta_field.get('data_type', 'none')
+            is_bitstring_data = meta_field.data_type().issubtype('BitString')
 
             # Adjust data to decode strings if requested
             if np.issubdtype(extracted_data.dtype, np.character) and (not is_bitstring_data) and decode_strings:
@@ -920,7 +920,7 @@ def read_table_data(table_structure, no_scale, decode_strings, masked):
         # Cast the byte data for this field into the appropriate data type
         try:
 
-            args = [field['data_type'], extracted_data]
+            args = [field.data_type(), extracted_data]
             kwargs = {'decode_strings': False}
 
             if table_structure.type == 'Table_Character':
@@ -937,7 +937,7 @@ def read_table_data(table_structure, no_scale, decode_strings, masked):
 
         except ValueError as e:
             six.raise_from(ValueError("Unable to convert field '{0}' to data_type '{1}': {2}"
-                                      .format(field['name'], field['data_type'], repr(e.args[0]))), None)
+                                      .format(field['name'], field.data_type(), repr(e.args[0]))), None)
 
         # Save a preliminary version of each field
         # (cast to its initial data type but without any scaling or other adjustments)

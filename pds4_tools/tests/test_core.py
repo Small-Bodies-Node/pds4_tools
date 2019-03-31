@@ -4,25 +4,23 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-import numpy as np
+import sys
 import pytest
+import numpy as np
 
 from . import PDS4ToolsTestCase
-from .compat import PY26, ET_Element
 
 from ..reader.core import pds4_read
 from ..reader.data import PDS_ndarray
+from ..reader.data_types import data_type_convert_dates
 from ..reader.array_objects import ArrayStructure
 from ..reader.table_objects import TableStructure, TableManifest
 from ..reader.label_objects import Label
 
-from ..extern import six
+from ..utils import compat
+from ..utils.compat import OrderedDict
 
-# Safe import of OrderedDict
-try:
-    from collections import OrderedDict
-except ImportError:
-    from ..extern.ordered_dict import OrderedDict
+from ..extern import six
 
 
 class TestStructureList(PDS4ToolsTestCase):
@@ -513,7 +511,7 @@ class TestLabel(PDS4ToolsTestCase):
 
         one_liner1 = self.label[0][3]
         assert isinstance(one_liner1, Label)
-        assert isinstance(one_liner1.getroot(), ET_Element)
+        assert isinstance(one_liner1.getroot(), compat.ET_Element)
 
         assert one_liner1.tag == '{http://pds.nasa.gov/pds4/pds/v1}test_getters'
         assert one_liner1.text == '  is_space_significant  '
@@ -533,7 +531,7 @@ class TestLabel(PDS4ToolsTestCase):
 
         one_liner2 = self.label[0][3]
         assert isinstance(one_liner2, Label)
-        assert isinstance(one_liner1.getroot(), ET_Element)
+        assert isinstance(one_liner1.getroot(), compat.ET_Element)
 
         assert one_liner2.tag == 'test_getters'
         assert one_liner2.text == 'is_space_significant'
@@ -628,7 +626,7 @@ class TestLabel(PDS4ToolsTestCase):
         title1 = self.label.find('.//title', return_ET=False)
         title2 = self.label.find('.//title', return_ET=True)
         assert xml_equal(title1, title2)
-        assert isinstance(title2, ET_Element)
+        assert isinstance(title2, compat.ET_Element)
 
     def test_findall(self):
 
@@ -697,7 +695,7 @@ class TestLabel(PDS4ToolsTestCase):
         title2 = self.label.findall('.//title', return_ET=True)
         assert xml_equal(title1[0], title2[0])
         assert isinstance(title2, list)
-        assert isinstance(title2[0], ET_Element)
+        assert isinstance(title2[0], compat.ET_Element)
 
     # def test_findtext(self):
 
@@ -791,6 +789,7 @@ class TestLabel(PDS4ToolsTestCase):
 
         # Make Python 2.6 adjustments, which includes prefix in more local spot than later Python versions
         namespace = ' xmlns:fake_prefix="http://pds.nasa.gov/pds4/fake_prefix/v1"'
+        PY26 = sys.version_info[0:2] == (2, 6)
         py26_namespace = namespace if PY26 else ''
         py27plus_namespace = namespace if (not PY26) else ''
 
@@ -976,6 +975,25 @@ class TestTableDataTypes(PDS4ToolsTestCase):
         # Test UTF8_String
         utf8_string = [' Tést stríng 1  ', ' Tést  2         ', ' Tést longést 3 ']
         _check_array_equal(table['UTF8_String'], utf8_string, 'U18')
+
+    @pytest.mark.xfail(tuple(map(int, np.__version__.split('.')[:2])) < (1, 11),
+                       reason="NumPy datetime64 API changes.")
+    def test_dates(self):
+
+        table = self.table
+
+        # Test ASCII_Date_Time_YMD_UTC
+        date_string_ymd = table['Dates_YMD_UTC']
+        date_ymd = [np.datetime64('2018-10-10T05:05'), np.datetime64('2018-01-10T05:05:05.123'),
+                    np.datetime64('2014')]
+
+        _check_array_equal(data_type_convert_dates(date_string_ymd), date_ymd, 'datetime64[us]')
+
+        # Test ASCII_Date_DOY
+        date_string_doy = table['Dates_DOY_Local']
+        date_doy = [np.datetime64('2018-07-19'), np.datetime64('2018-07-20'), np.datetime64('2018-07-21')]
+
+        _check_array_equal(data_type_convert_dates(date_string_doy), date_doy, 'datetime64[D]')
 
     def test_bitstrings(self):
 
@@ -1235,8 +1253,8 @@ class TestMaskedData(PDS4ToolsTestCase):
         array_lsb_double = self.structures[4].as_masked()
         lsb_double = np.ma.MaskedArray([1.79e+200, -5.730300000000001e+102, -10133.231, 1.79e+200],
                                        mask=[True, False, False, True])
-        assert np.array_equal(array_lsb_double.data.mask, lsb_double.mask)
 
+        assert np.array_equal(array_lsb_double.data.mask, lsb_double.mask)
         _check_array_equal(array_lsb_double.data, lsb_double, 'float64')
 
     def test_array_scaling_with_special_constants(self):
@@ -1309,11 +1327,16 @@ class TestDownloadFile(PDS4ToolsTestCase):
 
 def _check_array_equal(unknown_array, known_array, known_typecode):
 
+    is_int_array = np.issubdtype(np.asarray(unknown_array).dtype, np.integer)
     is_float_array = np.issubdtype(np.asarray(unknown_array).dtype, np.floating)
     is_complex_array = np.issubdtype(np.asarray(unknown_array).dtype, np.complexfloating)
 
+    # Check that int values are equal
+    if is_int_array:
+        assert np.array_equal(unknown_array, np.asanyarray(known_array, dtype='object'))
+
     # Check that float values are equal
-    if is_float_array:
+    elif is_float_array:
 
         # Tolerances for floating point comparison
         # (set such that differences large enough to raise eyebrows and thus should be investigated will fail)
@@ -1338,9 +1361,9 @@ def _check_array_equal(unknown_array, known_array, known_typecode):
 
         _check_array_equal(unknown_imag_array, known_imag_array, 'float64')
 
-    # Check that all other (non-float and non-complex) values are equal
+    # Check that all other (non-int, non-float and non-complex) values are equal
     else:
-        assert np.array_equal(unknown_array, np.asanyarray(known_array, dtype='object'))
+        assert np.array_equal(unknown_array, known_array)
 
     # Check that typecode is correct
     assert (unknown_array.dtype == known_typecode) or (unknown_array.dtype.name == known_typecode)

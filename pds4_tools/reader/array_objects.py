@@ -7,18 +7,12 @@ import sys
 
 from .general_objects import Structure, Meta_Structure
 from .label_objects import Meta_DisplaySettings, Meta_SpectralCharacteristics
-from .data_types import apply_scaling_and_value_offset
+from .data_types import apply_scaling_and_value_offset, PDSdtype
 
 from ..utils.exceptions import PDS4StandardsException
 
 from ..extern import six
 from ..extern.cached_property import threaded_cached_property
-
-# Safe import of OrderedDict
-try:
-    from collections import OrderedDict
-except ImportError:
-    from ..extern.ordered_dict import OrderedDict
 
 
 class ArrayStructure(Structure):
@@ -241,7 +235,7 @@ class ArrayStructure(Structure):
         if self.data_loaded:
 
             array_structure = self.from_array(self.data, no_scale=True, no_bitmask=True, masked=True,
-                                              structure_data=self.data, **kwargs)
+                                              copy=False, structure_data=self.data, **kwargs)
 
         # If the data has not been loaded, create a view of ArrayStructure that indicates to mask data
         # when the attempt to access it is made later
@@ -413,6 +407,17 @@ class Meta_ArrayStructure(Meta_Structure):
                 pass
 
         return obj
+
+    def data_type(self):
+        """ Data type of the array elements.
+
+        Returns
+        -------
+        PDSdtype
+            A PDS4 data type.
+        """
+
+        return PDSdtype(self['Element_Array']['data_type'])
 
     def dimensions(self):
         """

@@ -7,10 +7,12 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import sys
+import warnings
 
 import numpy as np
 import matplotlib as mpl
 
+from ..utils.compat import OrderedDict
 from ..extern.six.moves import reload_module
 
 # Initialize TK backend for MPL safely prior to importing from backend
@@ -29,12 +31,6 @@ else:
 
 # After initializing TK as backend, import MPL
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-
-# Safe import of OrderedDict
-try:
-    from collections import OrderedDict
-except ImportError:
-    from ..extern.ordered_dict import OrderedDict
 
 #################################
 
@@ -107,7 +103,12 @@ class FigureCanvas(object):
         # Since clear() is not intended to change the figure size, we restore it back after clearing.
         # Unfortunately this process does take a bit of time for large images.
         original_dimensions = self.get_dimensions(type='pixels')
-        self.set_dimensions((1, 1), type='pixels', force=True)
+
+        # Suppress MPL 2+ user warning on too small margins for plots, since this is intended
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', category=UserWarning)
+            self.set_dimensions((1, 1), type='pixels', force=True)
+
         self.mpl_figure.clear()
         self.set_dimensions(original_dimensions, type='pixels', force=True)
 
@@ -120,7 +121,12 @@ class FigureCanvas(object):
         # will be larger after closure than it was prior to opening. Setting figure size
         # to be 1x1 pixels, prior to running clear(), seems to negate this issue (it is
         # likely the leak still occurs but is much much smaller).
-        self.set_dimensions((1, 1), type='pixels', force=True)
+
+        # Suppress MPL 2+ user warning on too small margins for plots, since this is intended
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', category=UserWarning)
+            self.set_dimensions((1, 1), type='pixels', force=True)
+
         self.mpl_figure.clear()
         self.tk_widget.destroy()
 
@@ -229,6 +235,57 @@ class FigureCanvas(object):
             fig_size = np.round(np.asanyarray(fig_size) * self.dpi).astype('int')
 
         return tuple(fig_size)
+
+
+class MPLCompat(object):
+    """ Compatibility fixes for various versions of MPL. """
+
+    @staticmethod
+    def _get_navigation_toolbar():
+
+        # Allow safe import of NavigationToolbar2Tk (available in MPL v2+)
+        try:
+            from matplotlib.backends.backend_tkagg import NavigationToolbar2Tk
+        except ImportError:
+            from matplotlib.backends.backend_tkagg import NavigationToolbar2TkAgg as NavigationToolbar2Tk
+
+        return NavigationToolbar2Tk
+
+    @staticmethod
+    def _get_power_norm():
+
+        # Allow safe import of PowerNorm (available in MPL v1.4+)
+        try:
+            from matplotlib.colors import PowerNorm
+
+        except ImportError:
+            PowerNorm = None
+
+        return PowerNorm
+
+    @staticmethod
+    def _get_deprecation_warning():
+
+        # Allow safe import of MatplotlibDeprecationWarning
+        try:
+            from matplotlib.cbook.deprecation import MatplotlibDeprecationWarning
+        except ImportError:
+            MatplotlibDeprecationWarning = DeprecationWarning
+
+        return MatplotlibDeprecationWarning
+
+    NavigationToolbar2Tk = _get_navigation_toolbar.__get__(object)()
+    DeprecationWarning = _get_deprecation_warning.__get__(object)()
+    PowerNorm = _get_power_norm.__get__(object)()
+
+    @staticmethod
+    def axis_set_facecolor(axis, color):
+        """ Allow safe use of Axes.set_facecolor and  (available in MPL v1.5.x) """
+
+        try:
+            axis.set_facecolor(color)
+        except AttributeError:
+            axis.set_axis_bgcolor(color)
 
 
 def get_mpl_linestyles(inverse=None, include_none=True):
@@ -426,4 +483,10 @@ def restore_mpl_rcparams():
 
     global _mpl_user_defaults
 
-    mpl.rcParams.update(_mpl_user_defaults)
+    # While restoring, we ignore MPL depreciation warnings for old rcParams. In some MPL versions
+    # (e.g. MPL v3.0) there are deprecated settings in even the default mpl.rcParams. Thus when
+    # restoring, they give out spurious warnings.
+    with warnings.catch_warnings():
+
+        warnings.simplefilter('ignore', MPLCompat.DeprecationWarning)
+        mpl.rcParams.update(_mpl_user_defaults)

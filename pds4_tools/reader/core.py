@@ -131,14 +131,14 @@ def pds4_read(filename, quiet=False, lazy_load=False, no_scale=False, decode_str
             you can use the data attribute for a PDS4 Array data structure, or
             list-like and the field() method to access a field for a table.
 
-            PDS4 Arrays
+            PDS4 Arrays:
             >>> unnamed_array.data
 
-            PDS4 Table fields
+            PDS4 Table fields:
             >>> obs_table['wavelength']
             >>> obs_table.field('wavelength')
 
-            PDS4 Table records
+            PDS4 Table records:
             >>> obs_table[0:1000]
 
         Accessing Example Label meta data:
