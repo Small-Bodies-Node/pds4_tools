@@ -9,7 +9,7 @@ def read(filename):
 
 setup(
     name='pds4_tools',
-    version='1.1',
+    version='1.2-dev',
 
     description='Package to read and display NASA PDS4 data',
     long_description=read('README.rst'),
