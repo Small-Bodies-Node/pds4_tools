@@ -1,3 +1,5 @@
+:orphan:
+
 .. _user_manual:
 
 PDS4 Python Tools - User Manual
@@ -7,7 +9,7 @@ PDS4 Python Tools - User Manual
     :local:
     :backlinks: none
 
-1.1 Introduction
+1.1  Introduction
 ----------------
 
 PDS4 Python Tools are several modules integrated into a Python library to
