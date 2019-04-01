@@ -25,6 +25,19 @@ wheels/
 *.egg
 MANIFEST
 
+# Editor temporary/working/backup files
+.#*
+[#]*#
+*~
+*$
+*.bak
+*.kdev4
+.project
+.pydevproject
+*.swp
+.idea
+.vscode/
+
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
@@ -89,6 +102,11 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+
+# OS generated files
+.DS_Store?
+Icon?
+Thumbs.db
 
 # Spyder project settings
 .spyderproject
