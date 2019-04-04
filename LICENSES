@@ -45,6 +45,16 @@ or any later version.
 
 ----------------------------------------------------------------------------
 
+This software may be packaged by software licensed by the following:
+
+Copyright (c) 2004-2006 Bob Ippolito <bob at redivi.com>.
+Copyright (c) 2010-2012 Ronald Oussoren <ronaldoussoren at mac.com>.
+
+py2app is licensed under the terms of the MIT or PSF open source licenses.
+
+----------------------------------------------------------------------------
+
+
 This software includes or uses code licensed by the following:
 
 Copyright (c) 2010-2015 Benjamin Peterson
