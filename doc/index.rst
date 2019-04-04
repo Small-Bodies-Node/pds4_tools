@@ -1,9 +1,8 @@
 .. _index:
 
-Welcome to PDS4 Python Tools' documentation!
-============================================
+PDS4 Python Tools documentation
+===============================
 
-|
 |
 
 :ref:`User Manual <user_manual>`, for users that wish to read-in PDS4 data.
@@ -12,7 +11,7 @@ Welcome to PDS4 Python Tools' documentation!
 
 
 
-:ref:`Release Notes <changes>` for v1.1.
+:ref:`Release Notes <changes>` for v1.2-dev.
 
 |
 
