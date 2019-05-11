@@ -285,7 +285,7 @@ def read_structures(label, label_filename, lazy_load=False, no_scale=False, deco
             if structure_type == 'header':
                 structure = read_header(*args, lazy_load=True, decode_strings=decode_strings)
 
-            if structure_type == 'array':
+            elif structure_type == 'array':
                 structure = read_array(*args, lazy_load=True, no_scale=no_scale)
 
             elif structure_type == 'table':
