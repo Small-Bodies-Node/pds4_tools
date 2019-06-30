@@ -53,7 +53,7 @@ class LabelWindow(SearchableTextWindowMixIn, Window):
         # Add menu options
         self._add_menus()
         self._center_and_fit_to_content()
-        self._show_window()
+        self.show_window()
 
     # Adds menu options used for manipulating the label display
     def _add_menus(self):
@@ -143,7 +143,7 @@ class LabelTreeViewWindow(LabelWindow):
                                                   initial_display=initial_display)
 
         # Set a title for the window
-        self._set_title("{0} - Label View".format(self._widget.title()))
+        self.set_window_title("{0} - Label View".format(self._widget.title()))
 
         # TreeView object, which manages the text pad used to display the label
         self._tree_view = None
@@ -230,7 +230,7 @@ class LabelXMLWindow(LabelWindow):
                                              initial_display=initial_display)
 
         # Set a title for the window
-        self._set_title("{0} - Label XML View".format(self._widget.title()))
+        self.set_window_title("{0} - Label XML View".format(self._widget.title()))
 
         # Display initial label content
         self._update_label()

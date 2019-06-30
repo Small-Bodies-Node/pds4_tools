@@ -147,11 +147,11 @@ class Window(object):
         # Initialize window as a Toplevel TK window
         window_name = 'PDS4 Viewer'
         self._widget = Toplevel(class_=window_name)
-        self._set_title(window_name)
+        self.set_window_title(window_name)
 
         # Immediately hide window if requested
         if withdrawn:
-            self._hide_window()
+            self.hide_window()
 
         # Add window to window manager for tracking, and set its icon
         self._viewer = viewer
@@ -169,6 +169,38 @@ class Window(object):
         self._menu_options = {}
         self._callbacks = {}
         self._dependent_windows = []
+
+    # Obtain window title
+    def get_window_title(self):
+        return self._widget.title()
+
+    # Set window title
+    def set_window_title(self, title):
+        self._widget.title(title)
+
+    # Change window from withdrawn state to normal state
+    def show_window(self):
+        self._widget.deiconify()
+
+    # Change window from normal state to withdrawn state
+    def hide_window(self):
+        self._widget.withdraw()
+
+    # Set window geometry (dimensions and offset)
+    def set_window_geometry(self, width, height, x_offset=None, y_offset=None):
+
+        # Update stored dimensions
+        self._win_dimensions = {'width': width, 'height': height}
+
+        # Geometry may not be set correctly without updating idletasks
+        self._widget.update_idletasks()
+
+        # Update actual geometry
+        if (x_offset is not None) and (y_offset is not None):
+            self._widget.geometry('{0}x{1}+{2}+{3}'.format(width, height, x_offset, y_offset))
+
+        else:
+            self._widget.geometry('{0}x{1}'.format(width, height))
 
     # Closes the current window
     def close(self):
@@ -396,25 +428,6 @@ class Window(object):
 
         return trace_id
 
-    # Obtain window title
-    def _get_title(self):
-        return self._widget.title()
-
-    # Set window title
-    def _set_title(self, title):
-        self._widget.title(title)
-
-    # Set window dimensions
-    def _set_window_dimensions(self, width, height, x_offset=None, y_offset=None):
-
-        self._win_dimensions = {'width': width, 'height': height}
-
-        if (x_offset is not None) and (y_offset is not None):
-            self._widget.geometry('{0}x{1}+{2}+{3}'.format(width, height, x_offset, y_offset))
-
-        else:
-            self._widget.geometry('{0}x{1}'.format(width, height))
-
     # Set window dimensions by adding to current dimensions
     def _add_to_window_dimensions(self, width=None, height=None):
 
@@ -427,7 +440,7 @@ class Window(object):
         if height is not None:
             set_height += height
 
-        self._set_window_dimensions(set_width, set_height)
+        self.set_window_geometry(set_width, set_height)
 
     def _update_window_dimensions(self):
         self._widget.update_idletasks()
@@ -442,12 +455,12 @@ class Window(object):
         x_offset = (self._get_screen_size()[0] // 2) - (width // 2)
         y_offset = (self._get_screen_size()[1] // 2) - (height // 2)
 
-        self._set_window_dimensions(width, height, x_offset, y_offset)
+        self.set_window_geometry(width, height, x_offset, y_offset)
 
     # Set window size to exactly fit its content
     def _fit_to_content(self):
         self._widget.update_idletasks()
-        self._set_window_dimensions(self._widget.winfo_reqwidth(), self._widget.winfo_reqheight())
+        self.set_window_geometry(self._widget.winfo_reqwidth(), self._widget.winfo_reqheight())
 
     # Center the window on the screen and fit it to content (avoiding redrawing it twice)
     def _center_and_fit_to_content(self):
@@ -458,7 +471,7 @@ class Window(object):
         x_offset = (self._get_screen_size()[0] // 2) - (width // 2)
         y_offset = (self._get_screen_size()[1] // 2) - (height // 2)
 
-        self._set_window_dimensions(width, height, x_offset, y_offset)
+        self.set_window_geometry(width, height, x_offset, y_offset)
 
     # Issues warning. If log is true, the warning is logged. If show is True, a warning message will open.
     def _issue_warning(self, message, title='Warning', log=True, show=True):
@@ -492,14 +505,6 @@ class Window(object):
             self._widget.bind('<Button-5>', lambda e: self._widget.event_generate('<MouseWheel>', delta=-120))
 
         self._widget.bind('<MouseWheel>', scroll_method)
-
-    # Change window from normal state to withdrawn state
-    def _hide_window(self):
-        self._widget.withdraw()
-
-    # Change window from withdrawn state to normal state
-    def _show_window(self):
-        self._widget.deiconify()
 
     # Returns the size of the primary screen, automatically corrected for cross-platform differences
     def _get_screen_size(self):
@@ -637,7 +642,7 @@ class DataViewWindow(Window):
         # Initialize window size
         width = self._get_screen_size()[0] // 2
         height = self._get_screen_size()[1] // 2
-        self._set_window_dimensions(width, height)
+        self.set_window_geometry(width, height)
         self._center_window()
 
         # Add the header canvas, which contains the (positionally static) header information
@@ -667,7 +672,7 @@ class DataViewWindow(Window):
         self._horz_scrollbar = None
 
         # Show window once all initialization is done
-        self._show_window()
+        self.show_window()
 
     @property
     def settings(self):
@@ -714,7 +719,7 @@ class MessageWindow(Window):
         super(MessageWindow, self).__init__(viewer)
 
         # Set a title for the window
-        self._set_title('{0} - {1}'.format(self._get_title(), message_header))
+        self.set_window_title('{0} - {1}'.format(self.get_window_title(), message_header))
 
         # Add header
         header_box = Frame(self._widget, bg=self.get_bg('gray'))
@@ -743,7 +748,7 @@ class MessageWindow(Window):
         self._text_pad.see('end-1c linestart')
 
         self._center_and_fit_to_content()
-        self._show_window()
+        self.show_window()
 
     def _create_text_pad(self, word_wrap):
 
@@ -1024,7 +1029,7 @@ class SearchableTextWindow(SearchableTextWindowMixIn, Window):
         self._set_text(text)
 
         self._center_and_fit_to_content()
-        self._show_window()
+        self.show_window()
 
     # Adds menu options used for manipulating the window
     def _add_menus(self):
