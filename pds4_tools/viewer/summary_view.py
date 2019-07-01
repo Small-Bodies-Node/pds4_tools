@@ -40,10 +40,10 @@ logger = logger_init()
 class StructureListWindow(Window):
     """ Window that summarizes the structures showing some of their properties and giving buttons to open them """
 
-    def __init__(self, viewer, quiet=False, lazy_load=False, show_headers=False):
+    def __init__(self, viewer, quiet=False, lazy_load=False, show_headers=False, withdrawn=False):
 
         # Set initial necessary variables and do other required initialization procedures
-        super(StructureListWindow, self).__init__(viewer, withdrawn=False)
+        super(StructureListWindow, self).__init__(viewer, withdrawn=True)
 
         # Set window width to not be resizable
         self._widget.resizable(width=0, height=1)
@@ -59,6 +59,10 @@ class StructureListWindow(Window):
 
         # Add notify event for scroll wheel (used to scroll structure list)
         self._bind_scroll_event(self._mousewheel_scroll)
+
+        # Show window once all initialization is done
+        if not withdrawn:
+            self.show_window()
 
     # Opens the label, reads in any structures it contains, calls _draw_summary()
     def open_label(self, filename=None, from_existing_structures=None):
@@ -1217,9 +1221,15 @@ def open_summary(viewer, filename=None, from_existing_structures=None, quiet=Fal
 
     """
 
-    summary_window = StructureListWindow(viewer, quiet=quiet, lazy_load=lazy_load)
+    # Create window
+    summary_window = StructureListWindow(viewer, quiet=quiet, lazy_load=lazy_load, withdrawn=lazy_load)
 
+    # Open label (if requested)
     if (filename is not None) or (from_existing_structures is not None):
         summary_window.open_label(filename=filename, from_existing_structures=from_existing_structures)
+
+    # Show window
+    if lazy_load:
+        summary_window.show_window()
 
     return summary_window
