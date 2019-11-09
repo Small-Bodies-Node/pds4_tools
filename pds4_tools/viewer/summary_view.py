@@ -43,7 +43,7 @@ class StructureListWindow(Window):
     def __init__(self, viewer, quiet=False, lazy_load=False, show_headers=False, withdrawn=False):
 
         # Set initial necessary variables and do other required initialization procedures
-        super(StructureListWindow, self).__init__(viewer, withdrawn=True)
+        super(StructureListWindow, self).__init__(viewer, withdrawn=withdrawn)
 
         # Set window width to not be resizable
         self._widget.resizable(width=0, height=1)
@@ -59,10 +59,6 @@ class StructureListWindow(Window):
 
         # Add notify event for scroll wheel (used to scroll structure list)
         self._bind_scroll_event(self._mousewheel_scroll)
-
-        # Show window once all initialization is done
-        if not withdrawn:
-            self.show_window()
 
     # Opens the label, reads in any structures it contains, calls _draw_summary()
     def open_label(self, filename=None, from_existing_structures=None):
