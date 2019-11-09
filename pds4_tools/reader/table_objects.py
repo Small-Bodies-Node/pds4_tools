@@ -1369,7 +1369,7 @@ class TableManifest(collections_abc.Sequence):
             elif 'format' in item:
 
                 # Ensure field_format requirements
-                valid_field_format = re.compile(r'^%([\+,-])?([0-9]+)(\.([0-9]+))?([doxfes])$')
+                valid_field_format = re.compile(r'^%([\+,-])?([0-9]+)(\.([0-9]+))?([doxfeEs])$')
 
                 if not valid_field_format.match(item['format']):
                     logger.warning("field_format '{0}' does not conform to PDS4 standards for field {1} "
