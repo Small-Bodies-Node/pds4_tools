@@ -13,7 +13,7 @@ import traceback
 import subprocess
 
 from . import cache
-from ..utils.compat import OrderedDict, argparse
+from ..utils.compat import argparse
 from ..utils.helpers import is_array_like
 from ..utils.logging import logger_init
 
@@ -1098,6 +1098,22 @@ def _mpl_commands(function_name, *args, **kwargs):
     getattr(mpl_module, function_name)(*args, **kwargs)
 
 
+# When using IPython, ensure that user has not already initialized MPL with a non-TK backend. It does not
+# appear possible to switch backends in IPython once initialized, therefore we are forced to inform user.
+def _ipython_check():
+
+    if ('IPython' in sys.modules) and ('matplotlib' in sys.modules):
+
+        import matplotlib as mpl
+        mpl_backend = mpl.get_backend()
+
+        if mpl_backend not in ('TkAgg', None):
+            raise RuntimeError(
+                'Detected IPython with {0} backend initialized. PDS4 Viewer requires a TK backend. \n'
+                '1) Ensure to avoid %matplotlib or %gui statements prior running PDS4 Viewer. \n'
+                '2) If issue persists, use ipython --quick to skip loading config files.'.format(mpl_backend))
+
+
 def pds4_viewer(filename=None, from_existing_structures=None, lazy_load=True, quiet=False):
     """ Displays PDS4 compliant data in a GUI.
 
@@ -1124,6 +1140,9 @@ def pds4_viewer(filename=None, from_existing_structures=None, lazy_load=True, qu
     """
 
     from .summary_view import open_summary
+
+    # If using IPython, ensure only TK or no backend has been initialized
+    _ipython_check()
 
     # Initialize Viewer cache
     # (This must be done prior to MPL import and should be done as early as possible)
