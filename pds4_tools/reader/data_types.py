@@ -684,9 +684,6 @@ def data_type_convert_dates(data, data_type=None, mask_nulls=False):
 
         try:
 
-            import time
-            start_time = time.time()
-
             dates = np.empty(len(data), dtype=dtype)
 
             # If there are Special_Constants. Dates may also different formats, length is used for each
@@ -714,8 +711,6 @@ def data_type_convert_dates(data, data_type=None, mask_nulls=False):
                     date = dt.datetime.strptime(datum_strip, format_lengths[len(datum_strip)])
 
                     dates[i] = np.datetime64(date)
-
-            print("--- %s seconds ---" % (time.time() - start_time))
 
         except (ValueError, KeyError):
             raise ValueError("Unable to format date value, '{0}', according to PDS4 {1} data type.".
