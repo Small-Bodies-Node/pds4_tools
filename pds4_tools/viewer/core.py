@@ -1102,16 +1102,17 @@ def _mpl_commands(function_name, *args, **kwargs):
 # appear possible to switch backends in IPython once initialized, therefore we are forced to inform user.
 def _ipython_check():
 
-    if ('IPython' in sys.modules) and ('matplotlib' in sys.modules):
+    if ('IPython' not in sys.modules) or ('matplotlib' not in sys.modules):
+        return
 
-        import matplotlib as mpl
-        mpl_backend = mpl.get_backend()
+    import matplotlib as mpl
+    mpl_backend = mpl.get_backend()
 
-        if mpl_backend not in ('TkAgg', None):
-            raise RuntimeError(
-                'Detected IPython with {0} backend initialized. PDS4 Viewer requires a TK backend. \n'
-                '1) Ensure to avoid %matplotlib or %gui statements prior running PDS4 Viewer. \n'
-                '2) If issue persists, use ipython --quick to skip loading config files.'.format(mpl_backend))
+    if mpl_backend not in ('TkAgg', None):
+        raise RuntimeError(
+            'Detected IPython with {0} backend initialized. PDS4 Viewer requires a TK backend. \n'
+            '1) Avoid %matplotlib or %gui statements prior running PDS4 Viewer. \n'
+            '2) If issue persists, use ipython --quick to skip loading config files.'.format(mpl_backend))
 
 
 def pds4_viewer(filename=None, from_existing_structures=None, lazy_load=True, quiet=False):
