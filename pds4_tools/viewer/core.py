@@ -1109,10 +1109,11 @@ def _ipython_check():
     mpl_backend = mpl.get_backend()
 
     if mpl_backend not in ('TkAgg', None):
-        raise RuntimeError(
+        logger.warning(
             'Detected IPython with {0} backend initialized. PDS4 Viewer requires a TK backend. \n'
-            '1) Avoid %matplotlib or %gui statements prior running PDS4 Viewer. \n'
-            '2) If issue persists, use ipython --quick to skip loading config files.'.format(mpl_backend))
+            'If PDS4 Viewer will not open, follow the steps below: \n'
+            '  1) Avoid %matplotlib or %gui statements prior running PDS4 Viewer. \n'
+            '  2) If issue persists, use ipython --quick to skip loading config files.'.format(mpl_backend))
 
 
 def pds4_viewer(filename=None, from_existing_structures=None, lazy_load=True, quiet=False):
