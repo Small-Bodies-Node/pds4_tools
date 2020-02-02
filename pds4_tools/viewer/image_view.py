@@ -144,7 +144,7 @@ class ImageViewWindow(DataViewWindow):
     def load_array(self, array_structure):
 
         # Set a title for the window
-        self._set_title("{0} - Image '{1}'".format(self._get_title(), array_structure.id))
+        self.set_window_title("{0} - Image '{1}'".format(self.get_window_title(), array_structure.id))
 
         # Set necessary instance variables for this DataViewWindow
         self.structure = array_structure
@@ -2435,7 +2435,7 @@ class DataCubeWindow(Window):
         super(DataCubeWindow, self).__init__(viewer)
 
         # Set the title
-        self._set_title('{0} - Data Cube'.format(self._get_title()))
+        self.set_window_title('{0} - Data Cube'.format(self.get_window_title()))
 
         # Set the ImageViewWindow for this DataCube as an instance variable
         self._structure_window = image_structure_window
@@ -2487,7 +2487,7 @@ class DataCubeWindow(Window):
 
         # Update window to ensure it has taken its final form, then show it
         self._widget.update_idletasks()
-        self._show_window()
+        self.show_window()
 
     # Creates a row to allow changing of slice index for a single axis. Contains a slider for each axis,
     # and if add_selectors is True then a radio button to select the axis
@@ -2550,7 +2550,7 @@ class ScaleParametersWindow(Window):
         super(ScaleParametersWindow, self).__init__(viewer)
 
         # Set the title
-        self._set_title("{0} - Scale Parameters".format(self._get_title()))
+        self.set_window_title("{0} - Scale Parameters".format(self.get_window_title()))
 
         # Set instance variables for passed in parameters
         self._structure_window = image_structure_window
@@ -2604,7 +2604,7 @@ class ScaleParametersWindow(Window):
 
         # Add notify event for window resizing
         self._fit_to_content()
-        self._show_window()
+        self.show_window()
         self._histogram_frame.bind('<Configure>', self._window_resize)
 
     # Adds menu options used for manipulating the data display
@@ -2872,7 +2872,7 @@ class ZoomPropertiesWindow(Window):
         super(ZoomPropertiesWindow, self).__init__(viewer)
 
         # Set the title
-        self._set_title('{0} - Zoom Properties'.format(self._get_title()))
+        self.set_window_title('{0} - Zoom Properties'.format(self.get_window_title()))
 
         # Set the ImageViewWindow to an instance variable
         self._structure_window = image_structure_window
@@ -2897,7 +2897,7 @@ class ZoomPropertiesWindow(Window):
 
         # Update window to ensure it has taken its final form, then show it
         self._widget.update_idletasks()
-        self._show_window()
+        self.show_window()
 
     # Draws the main content of the window
     def _draw_content(self):

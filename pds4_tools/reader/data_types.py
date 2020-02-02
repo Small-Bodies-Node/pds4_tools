@@ -633,7 +633,7 @@ def data_type_convert_dates(data, data_type=None, mask_nulls=False):
 
     # Build a dict where each key corresponds to the length of a datetime for that format, and each value
     # corresponds to the format. I.e., allow translation between datetime length and its format.
-    symbol_lengths = {'%Y': 4, '%j': 3, '%m': 2, '%d': 2, '%H': 2, '%M': 2, '%S': 2, '%f': 0}
+    symbol_lengths = {'%Y': 4, '%j': 3, '%m': 2, '%d': 2, '%H': 2, '%M': 2, '%S': 2, '.%f': 0}
     format_lengths = {}
 
     for _format in formats:
@@ -649,8 +649,9 @@ def data_type_convert_dates(data, data_type=None, mask_nulls=False):
     # Adjust above format length dict to account for the variable number of fraction seconds (up to 6 allowed)
     if '%f' in format:
 
+        fraction_length = max(format_lengths.keys()) + 2
         for i in range(0, 6):
-            format_lengths[max(format_lengths.keys()) + i] = format
+            format_lengths[fraction_length+i] = format
 
     # Decode input from bytes into strings, when necessary
     if (not six.PY2) and (data.dtype.char == 'S'):
@@ -684,9 +685,6 @@ def data_type_convert_dates(data, data_type=None, mask_nulls=False):
 
         try:
 
-            import time
-            start_time = time.time()
-
             dates = np.empty(len(data), dtype=dtype)
 
             # If there are Special_Constants. Dates may also different formats, length is used for each
@@ -714,8 +712,6 @@ def data_type_convert_dates(data, data_type=None, mask_nulls=False):
                     date = dt.datetime.strptime(datum_strip, format_lengths[len(datum_strip)])
 
                     dates[i] = np.datetime64(date)
-
-            print("--- %s seconds ---" % (time.time() - start_time))
 
         except (ValueError, KeyError):
             raise ValueError("Unable to format date value, '{0}', according to PDS4 {1} data type.".

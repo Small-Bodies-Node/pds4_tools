@@ -9,9 +9,10 @@ Building PDS4 Tools:
 
       1) Was version in setup.py updated?
       2) Was version in pds4_tools.__init__ updated?
-      3) Was CHANGES.RST updated?
-      4) Was the test suite run on all necessary Python versions?
-      5) Have the Sphinx docs been updated for the new version?
+      3) Was version in docs/index.rst updated?
+      4) Was CHANGES.RST updated?
+      5) Was the test suite run on all necessary Python versions?
+      6) Have the Sphinx docs been updated for the new version?
 
    Building:
 

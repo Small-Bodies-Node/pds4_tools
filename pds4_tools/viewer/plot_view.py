@@ -131,7 +131,7 @@ class PlotViewWindow(DataViewWindow):
                           'pixel_init_dimensions': (0, 0), 'dpi': 80.}
 
         # Set a title for the window
-        self._set_title("{0} - Plot from '{1}'".format(self._get_title(), table_structure.id))
+        self.set_window_title("{0} - Plot from '{1}'".format(self.get_window_title(), table_structure.id))
 
         # Create the header
         self._draw_header()
@@ -1887,7 +1887,7 @@ class PlotOptionsWindow(Window):
         super(PlotOptionsWindow, self).__init__(viewer, withdrawn=True)
 
         # Set the title
-        self._set_title('{0} - Plot Options'.format(self._get_title()))
+        self.set_window_title('{0} - Plot Options'.format(self.get_window_title()))
 
         # Set PlotOptionsWindow to be transient, meaning it does not show up in the task bar and it stays
         # on top of its master window. This encourages the user to close this window when they are done
@@ -1939,12 +1939,12 @@ class PlotOptionsWindow(Window):
         width, height = self._tab_menu.dimensions()
         width += 20
         height += buttons_box.winfo_reqheight() + 35
-        self._set_window_dimensions(width=width, height=height)
+        self.set_window_geometry(width=width, height=height)
         self._center_window()
 
         # Update window to ensure it has taken its final form, then show it
         self._widget.update_idletasks()
-        self._show_window()
+        self.show_window()
 
     # Add tab and contents that control Labels options (text, visibility, font, size, style, color, )
     def _add_labels_tab(self):
@@ -2722,8 +2722,8 @@ class PlotColumnsWindow(Window):
         super(PlotColumnsWindow, self).__init__(viewer, withdrawn=True)
 
         # Set the title
-        self._set_title("{0} - Select Plot Columns from Table '{1}'".
-                        format(self._get_title(), table_structure.id))
+        self.set_window_title("{0} - Select Plot Columns from Table '{1}'".
+                              format(self.get_window_title(), table_structure.id))
 
         # Initialize plot columns window variables
         self._structure = table_structure
@@ -2754,7 +2754,7 @@ class PlotColumnsWindow(Window):
 
         # Update window to ensure it has taken its final form, then show it
         self._widget.update_idletasks()
-        self._show_window()
+        self.show_window()
 
     # Draws the main content of the window
     def draw_content(self):

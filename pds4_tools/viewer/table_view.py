@@ -74,7 +74,7 @@ class TabularViewWindow(DataViewWindow):
     def load_table(self, table_structure):
 
         # Set a title for the window
-        self._set_title("{0} - Table '{1}'".format(self._get_title(), table_structure.id))
+        self.set_window_title("{0} - Table '{1}'".format(self.get_window_title(), table_structure.id))
 
         # Set necessary instance variables for this DataViewWindow
         self.structure = table_structure

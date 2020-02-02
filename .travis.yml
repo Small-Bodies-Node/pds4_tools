@@ -14,7 +14,8 @@ matrix:
 install:
   - if [[ $TRAVIS_PYTHON_VERSION == 3.3 ]]; then
       pip install virtualenv==15.2.0;
-      pip install tox==3.1.2;
+      pip install pluggy==0.5.2;
+      pip install tox==2.9.1;
     fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then
       pip install tox==3.7.0;

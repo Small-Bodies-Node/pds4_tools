@@ -40,10 +40,10 @@ logger = logger_init()
 class StructureListWindow(Window):
     """ Window that summarizes the structures showing some of their properties and giving buttons to open them """
 
-    def __init__(self, viewer, quiet=False, lazy_load=False, show_headers=False):
+    def __init__(self, viewer, quiet=False, lazy_load=False, show_headers=False, withdrawn=False):
 
         # Set initial necessary variables and do other required initialization procedures
-        super(StructureListWindow, self).__init__(viewer, withdrawn=False)
+        super(StructureListWindow, self).__init__(viewer, withdrawn=withdrawn)
 
         # Set window width to not be resizable
         self._widget.resizable(width=0, height=1)
@@ -88,7 +88,7 @@ class StructureListWindow(Window):
             # Set title
             title = 'Data Structure Summary' if len(self._structure_list) > 0 else 'Label'
             title += '' if (filename is None) else " for '{0}'".format(filename)
-            self._set_title("{0} - {1}".format(self._get_title(), title))
+            self.set_window_title("{0} - {1}".format(self.get_window_title(), title))
 
         except Exception as e:
 
@@ -349,7 +349,7 @@ class StructureListWindow(Window):
                                 for i in range(0, len(self._structure_list))]
             window_height = min(possible_heights, key=lambda x:abs(x-half_screen_height))
 
-        self._set_window_dimensions(window_width, window_height)
+        self.set_window_geometry(window_width, window_height)
 
         # Add line dividing header and summary data
         self._canvas.create_line(5, 27, window_width - 5, 27)
@@ -403,7 +403,7 @@ class StructureListWindow(Window):
         window_height = label_info_frame.winfo_height() + header_frame.winfo_reqheight() + 16
         window_width = label_info_frame.winfo_reqwidth()
 
-        self._set_window_dimensions(window_width, window_height)
+        self.set_window_geometry(window_width, window_height)
 
         # Add line dividing header and summary data
         self._canvas.create_line(5, 27, window_width - 5, 27)
@@ -668,7 +668,7 @@ class StructureListWindow(Window):
 
         if self._label_open:
 
-            self._set_title(self._get_title().split('-')[0].strip())
+            self.set_window_title(self.get_window_title().split('-')[0].strip())
             self._remove_menu('View', in_menu='main')
             self._remove_menu('Export', in_menu='main')
             self._erase_summary()
@@ -690,7 +690,7 @@ class OpenFromURLWindow(Window):
         super(OpenFromURLWindow, self).__init__(viewer, withdrawn=True)
 
         # Set the title
-        self._set_title('{0} - Open Label from URL'.format(self._get_title()))
+        self.set_window_title('{0} - Open Label from URL'.format(self.get_window_title()))
 
         # Set OpenFromURLWindow to be transient, meaning it does not show up in the task bar and it stays
         # on top of its master window. This mimics behavior of normal open windows, that ask the path to open,
@@ -708,7 +708,7 @@ class OpenFromURLWindow(Window):
 
         # Update window to ensure it has taken its final form, then show it
         self._widget.update_idletasks()
-        self._show_window()
+        self.show_window()
 
     # Draws the main content of the window
     def _show_content(self):
@@ -771,7 +771,7 @@ class DataExportWindow(Window):
 
         # Set the title
         type = 'Array' if structure.is_array() else 'Table'
-        self._set_title("{0} - Export {1} '{2}'".format(self._get_title(), type, structure.id))
+        self.set_window_title("{0} - Export {1} '{2}'".format(self.get_window_title(), type, structure.id))
 
         # Set DataExportWindow to be transient, meaning it does not show up in the task bar and it stays
         # on top of its master window. This mimics behavior of normal save windows, that ask where to save,
@@ -791,7 +791,7 @@ class DataExportWindow(Window):
 
         # Update window to ensure it has taken its final form, then show it
         self._widget.update_idletasks()
-        self._show_window()
+        self.show_window()
 
     # Draws the main content of the window
     def _show_content(self):
@@ -1217,9 +1217,15 @@ def open_summary(viewer, filename=None, from_existing_structures=None, quiet=Fal
 
     """
 
-    summary_window = StructureListWindow(viewer, quiet=quiet, lazy_load=lazy_load)
+    # Create window
+    summary_window = StructureListWindow(viewer, quiet=quiet, lazy_load=lazy_load, withdrawn=lazy_load)
 
+    # Open label (if requested)
     if (filename is not None) or (from_existing_structures is not None):
         summary_window.open_label(filename=filename, from_existing_structures=from_existing_structures)
+
+    # Show window
+    if lazy_load:
+        summary_window.show_window()
 
     return summary_window

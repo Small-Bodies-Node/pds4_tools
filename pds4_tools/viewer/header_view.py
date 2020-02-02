@@ -12,7 +12,7 @@ class HeaderViewWindow(SearchableTextWindowMixIn, DataViewWindow):
     def load_header(self, header_structure):
 
         # Set a title for the window
-        self._set_title("{0} - Header '{1}'".format(self._get_title(), header_structure.id))
+        self.set_window_title("{0} - Header '{1}'".format(self.get_window_title(), header_structure.id))
 
         # Set necessary instance variables for this DataViewWindow
         self.structure = header_structure

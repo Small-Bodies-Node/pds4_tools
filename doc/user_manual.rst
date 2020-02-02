@@ -1,3 +1,5 @@
+:orphan:
+
 .. _user_manual:
 
 PDS4 Python Tools - User Manual
@@ -7,23 +9,23 @@ PDS4 Python Tools - User Manual
     :local:
     :backlinks: none
 
-Section 1 - Introduction
-------------------------
+1.1  Introduction
+----------------
 
 PDS4 Python Tools are several modules integrated into a Python library to
 provide access to PDS4 data.
 
 
-Section 2 - Installation
-------------------------
+1.2  Installation
+-----------------
 
 Installation instructions are currently provided at:
 
 http://sbndev.astro.umd.edu/wiki/Python_PDS4_Tools#Installation
 
 
-Section 3 - Quick Tutorial
---------------------------
+1.3  Quick Tutorial
+-------------------
 
 This chapter provides a quick introduction into using PDS4 Python Tools. The
 goal is to demonstrate basic features without getting into too much detail.
@@ -44,9 +46,9 @@ describing label,
 >>> structures = pds4_tools.read('http://url.com/label.xml') # Remote
 
 For remote URLs, the files will be downloaded to a temporary on-disk cache
-and deleted upon Python interpretation exit.
+and deleted upon Python interpreter exit.
 
-The `pds4_tools.read` function has several optional arguments that control warnings,
+The `pds4_tools.read()` function has several optional arguments that control warnings,
 scaling, and lazy-loading. It returns a PDS4 Tools object called a `StructureList`
 which is a ``list``-like object, consisting of Structure objects. A Structure typically
 consists of a data array or table, and the label portion that describes that it.
@@ -71,7 +73,7 @@ Note that LIDs and names are case-sensitive.
 Working with large files
 ________________________
 
-The `pds4_tools.read` function, with default arguments, will immediately read
+The `pds4_tools.read()` function, with default arguments, will immediately read
 all data structures into memory all at once. This may not be desired for labels
 describing many large data structures at once, and for this reason the
 function supports a ``lazy_load=True`` argument.
@@ -381,7 +383,7 @@ installations of Python. To enable Image View and Plot View, you must
 also have recent versions of `Matplotlib <http://matplotlib.org>`_
 installed.
 
-Section 5 -  API
-----------------
+1.4  API
+--------
 
 The full API reference is available :ref:`here <index>`.
