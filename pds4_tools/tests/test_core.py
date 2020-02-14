@@ -43,6 +43,10 @@ class TestStructureList(PDS4ToolsTestCase):
         assert isinstance(self.structures[13], TableStructure)
         assert self.structures[13] is self.structures['data_Observation']
 
+        # Test retrieval when both LID and name are set
+        assert self.structures[5] is self.structures['data_Engineering']
+        assert self.structures[5] is self.structures['data_Engineering_name']
+
         # Test retrieval of structures with UTF-8 characters in name
         assert isinstance(self.structures[3], TableStructure)
         assert self.structures[3] is self.structures['data¥_Integration']

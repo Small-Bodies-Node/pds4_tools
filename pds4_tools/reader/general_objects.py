@@ -217,20 +217,21 @@ class StructureList(collections_abc.Sequence):
 
         output.flush()
 
-    def _get_structure_by_id(self, key, id_type='both'):
+    def _get_structure_by_id(self, key, id_type='any'):
         """ Obtain a specific `Structure` from `StructureList` by an ID.
 
         Parameters
         ----------
         key : array_like[str or unicode, int]
-            First value sets the key to search for (must be either the name or local identifier of the
-            Structure), second value indicates which repetition to select, with zero-based indexing,
-            typically used if there are multiple `Structure`'s with the same id.
+            First value sets the key to search for (must be either the name or local identifier of
+            the Structure), second value indicates which repetition to select, with zero-based
+            indexing, typically used if there are multiple `Structure`'s with the same id.
         id_type : str, unicode or list[str or unicode], optional
-            If given, either 'name', 'local_identifier', 'both', or a list of the three values in the
-            order that the search should look at them while trying to match key. For Structures without
-            either but with an ID set, the search will try to match key to the ID also when doing 'both'.
-            Defaults to 'both'.
+            If given, either 'name', 'local_identifier', 'any', or a list of the three values in the
+            order that the search should look at them while trying to match `key`. A value other than
+            'any' indicates to only search structures for that id type. For Structures with an ID
+            attribute set, the search will also try to match `key` to the ID when doing 'any'.
+            Defaults to 'any'.
 
         Returns
         -------
@@ -252,10 +253,13 @@ class StructureList(collections_abc.Sequence):
 
             for structure in self.structures:
 
-                if cur_id_type in ('local_identifier', 'name') and structure.meta_data.get(cur_id_type) == key[0]:
-                    matches.append(structure)
+                meta_data = structure.meta_data
+                all_ids = [structure.id, meta_data.get('name'), meta_data.get('local_identifier')]
 
-                elif cur_id_type == 'both' and structure.id == key[0]:
+                # Match either the current ID being searched for, or if 'any' was used then any ID
+                if (cur_id_type in ('name', 'local_identifier') and meta_data.get(cur_id_type) == key[0]) or \
+                   (cur_id_type == 'any' and key[0] in all_ids):
+
                     matches.append(structure)
 
             if len(matches) > key[1]:
