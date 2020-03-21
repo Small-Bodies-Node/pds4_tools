@@ -213,7 +213,7 @@ def new_array(input, no_scale=False, no_bitmask=False, masked=None, copy=True, *
         array = input.copy() if copy else input
 
         # Apply the bit mask to extracted_data if necessary
-        bit_mask = meta_data.get('Object_Statistics', {}).get('bit_mask')
+        bit_mask = (meta_data.get('Object_Statistics') or {}).get('bit_mask')
         if (not no_bitmask) and (bit_mask is not None):
             bit_mask_string = six.text_type(bit_mask).zfill(array.dtype.itemsize * 8)
             _apply_bitmask(array, bit_mask_string, special_constants=special_constants)

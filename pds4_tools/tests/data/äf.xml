@@ -137,6 +137,9 @@
         <elements>36</elements>
         <sequence_number>3</sequence_number>
       </Axis_Array>
+      <Object_Statistics>
+        <!-- Test for Object_Statistics with no child elements. -->
+      </Object_Statistics>
     </Array_3D_Spectrum>
     <Header>
       <local_identifier>header_Integration</local_identifier>
