@@ -488,10 +488,10 @@ class ImageViewWindow(DataViewWindow):
                 horizontal_axis = max(saved_axes)
 
         # Force color and/or time axis to none if requested
-        if color_axis is 'none':
+        if color_axis == 'none':
             color_axis = None
 
-        if time_axis is 'none':
+        if time_axis == 'none':
             time_axis = None
 
         # Obtain sequence number corresponding to each axis
