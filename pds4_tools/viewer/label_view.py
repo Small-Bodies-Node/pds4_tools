@@ -30,8 +30,10 @@ class LabelWindow(SearchableTextWindowMixIn, Window):
 
         # Stores possibilities of what can be displayed (these are listed in the View menu), 'break' is
         # not a valid option but simply indicates a break in the menu should be where it occurs
-        self._display_types = ['full label', 'object label', 'break', 'discipline area', 'mission area',
-                               'break', 'display settings', 'spectral characteristics']
+        self._display_types = ['full label', 'object label', 'break',
+                               'identification area', 'observation area',
+                               'discipline area', 'mission area', 'file area', 'break',
+                               'display settings', 'spectral characteristics']
 
         # Stores what display type is currently selected
         display_type = StringVar()
@@ -103,23 +105,34 @@ class LabelWindow(SearchableTextWindowMixIn, Window):
     # Obtain the correct label based on the label display type, or None if there is no available label
     def _label_for_display_type(self, display_type):
 
-        label = None
-
         object_lid = None
         if self.structure_label is not None:
             object_lid = self.structure_label.findtext('local_identifier')
 
-        # Retrieve which label should be shown
-        if display_type == 'full label':
-            label = self.full_label
+        # Retrieve non-structure sections of labels to show, if requested
+        label = {'full label':          self.full_label,
+                 'identification area': self.full_label.find('Identification_Area'),
+                 'observation area':    self.full_label.find('Observation_Area'),
+                 'discipline area':     get_discipline_area(self.full_label),
+                 'mission area':        get_mission_area(self.full_label),
+                 }.get(display_type)
 
-        elif display_type == 'discipline area':
-            label = get_discipline_area(self.full_label)
+        # Retrieve File_Area_* portion of labels to show, if requested
+        if display_type == 'file area':
 
-        elif display_type == 'mission area':
-            label = get_mission_area(self.full_label)
+            label = self.full_label.copy()
+            for child in list(label):
+                if not child.tag.startswith('File_Area'):
+                    for bool_ in [True, False]:
+                        label.getroot(unmodified=bool_).remove(child.getroot(unmodified=bool_))
 
-        elif self.structure_label is not None:
+            if len(label) == 0:
+                label = None
+            elif len(label) == 1:
+                label = label[0]
+
+        # Retrieve structure-specific sections of labels to show, if requested
+        elif (label is None) and (self.structure_label is not None):
 
             if display_type == 'object label':
                 label = self.structure_label
