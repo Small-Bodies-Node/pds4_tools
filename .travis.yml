@@ -1,16 +1,18 @@
-sudo: false
+os: linux
 language: python
-dist: trusty
+dist: xenial
 matrix:
   include:
   - python: 2.6
+    dist: trusty
   - python: 2.7
   - python: 3.3
+    dist: trusty
   - python: 3.4
   - python: 3.5
   - python: 3.6
   - python: 3.7
-    dist: xenial
+  - python: 3.8
 install:
   - if [[ $TRAVIS_PYTHON_VERSION == 3.3 ]]; then
       pip install virtualenv==15.2.0;
