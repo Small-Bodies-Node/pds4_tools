@@ -1309,7 +1309,7 @@ def get_mission_area(label):
     Parameters
     ----------
     label : Label or ElementTree Element
-        Label for a PDS4 product with-in which to look for a mission area.
+        Full label for a PDS4 product with-in which to look for a mission area.
 
     Returns
     -------
@@ -1317,7 +1317,7 @@ def get_mission_area(label):
         Found Mission_Area section with same return type as *label*, or None if not found.
     """
 
-    return label.find('.//Mission_Area')
+    return label.find('*/Mission_Area')
 
 
 def get_discipline_area(label):
@@ -1326,11 +1326,12 @@ def get_discipline_area(label):
     Parameters
     ----------
     label : Label or ElementTree Element
-        Label for a PDS4 product with-in which to look for a discipline area.
+        Full label for a PDS4 product with-in which to look for a discipline area.
 
     Returns
     -------
     Label, ElementTree Element or None
         Found Discipline_Area section with same return type as *label*, or None if not found.
     """
-    return label.find('.//Discipline_Area')
+
+    return label.find('*/Discipline_Area')
