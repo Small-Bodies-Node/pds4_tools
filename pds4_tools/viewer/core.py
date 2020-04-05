@@ -892,6 +892,9 @@ class SearchableTextWindowMixIn(object):
         self._text_pad.insert('1.0', text)
         self._text_pad.config(state='disabled')
 
+        # Reset search because the text has changed
+        self._reset_search()
+
     # Sets text shown in header
     def _set_heading(self, header):
         self._header_text.set(header)
@@ -909,13 +912,14 @@ class SearchableTextWindowMixIn(object):
 
         # Do not try to search if search string is empty
         if not search_text.strip():
-            self._search_match_results = []
-            self._update_search_match_label(match_num=0, total_matches=0, action='hide')
+            self._reset_search()
             return
 
-        # Start search from beginning unless method was called by an event binding (likely for the enter key)
-        # or without arguments (meaning search button was pressed)
-        if len(args) != 0 and not isinstance(args[0], TKEvent):
+        # Start search from beginning when:
+        #   1. no prior result was found, or
+        #   2. search button was not pressed (method will not have args), or
+        #   3. enter key was not pressed in search field (method will not be called by an event binding)
+        if (self._search_match_idx == -1) or (len(args) != 0 and not isinstance(args[0], TKEvent)):
 
             self._search_match_results = []
             self._search_match_idx = -1
@@ -981,6 +985,12 @@ class SearchableTextWindowMixIn(object):
 
         else:
             self._search_match_label.pack_forget()
+
+    # Reset search to initial state
+    def _reset_search(self):
+        self._search_match_idx = -1
+        self._search_match_results = []
+        self._update_search_match_label(match_num=0, total_matches=0, action='hide')
 
     def _select_all(self):
         self._text_pad.focus()

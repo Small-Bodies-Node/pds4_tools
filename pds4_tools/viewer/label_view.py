@@ -206,6 +206,9 @@ class LabelTreeViewWindow(LabelWindow):
                                    value_font=self.get_font(name='monospace'),
                                    spacing_font=self.get_font())
 
+        # Reset search because the text has changed
+        self._reset_search()
+
     # Searches label for the string in the search box
     def _do_search(self, *args):
 
