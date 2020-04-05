@@ -1616,8 +1616,6 @@ class PlotViewWindow(DataViewWindow):
                 num_label_chars = len(''.join(tick_labels))
                 num_tick_labels = len(tick_labels)
                 num_bins = num_ticks - num_iterations
-                avg_label_len = sum(map(len, tick_labels)) / num_tick_labels
-                max_density = min(20 - avg_label_len, 15)
 
                 if num_tick_labels <= 2 or num_label_chars <= 1 or num_bins <= 0:
                     break
@@ -1625,6 +1623,9 @@ class PlotViewWindow(DataViewWindow):
                 # Adjust maximum number of ticks so that the below equation is satisfied
                 # (the specific number is chosen based on experimentation of what looks good;
                 #  we distinguish for date axes because AutoDateLocator does not support locator_params)
+                avg_label_len = sum(map(len, tick_labels)) / num_tick_labels
+                max_density = min(20 - avg_label_len, 15)
+
                 if plot_size[0] / num_label_chars < max_density:
 
                     if self._is_date_axis('x'):
