@@ -521,7 +521,8 @@ class Label(object):
                 # and replace with a newline and spaces such that the closing tag is on the same level
                 # as the opening tag
                 if elem.text.rstrip(' ') != elem.text.rstrip():
-                    elem.text = elem.text.rstrip() + '\n' + i
+                    last_newline = max(elem.text.rfind('\n'), elem.text.rfind('\r'))
+                    elem.text = elem.text[:last_newline] + '\n' + i
 
             if len(elem):
 
@@ -534,6 +535,8 @@ class Label(object):
                 if not elem.tail or not elem.tail.strip():
                     elem.tail = i_text
             else:
+                if elem.text and not elem.text.strip():
+                    elem.text = i_text
                 if level and (not elem.tail or not elem.tail.strip()):
                     elem.tail = i_tail
 
@@ -566,7 +569,7 @@ class Label(object):
         # root element there is no element above it with a tail. We check what is the indent for the
         # closing tag of the root element and manually insert it for the opening tag.)
         if not pretty_print:
-            last_tail = root[-1].tail
+            last_tail = root[-1].tail if len(root) else root.text
 
             if last_tail is not None:
                 num_leading_spaces = len(last_tail) - len(last_tail.rstrip(' '))
