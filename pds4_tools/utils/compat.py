@@ -19,12 +19,6 @@ try:
 except ImportError:
     from ..extern import argparse
 
-# collections.abc compat (Python 3.3+, check if available in six.moves yet)
-try:
-    import collections.abc as collections_abc
-except ImportError:
-    import collections as collections_abc
-
 # ElementTree compat (Python 2.7+ and 3.3+)
 ET_Element = ET.Element if isinstance(ET.Element, six.class_types) else ET._Element
 ET_Tree_iter = ET.ElementTree.iter if hasattr(ET.ElementTree, 'iter') else ET.ElementTree.getiterator

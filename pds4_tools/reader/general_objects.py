@@ -6,13 +6,14 @@ from __future__ import unicode_literals
 import sys
 import abc
 
-from ..utils.compat import OrderedDict, collections_abc
+from ..utils.compat import OrderedDict
 from ..utils.helpers import xml_to_dict, is_array_like
 from ..utils.data_access import is_supported_url, download_file
 from ..utils.exceptions import PDS4StandardsException
 from ..utils.logging import logger_init
 
 from ..extern import six
+from ..extern.six.moves import collections_abc
 
 # Initialize the logger
 logger = logger_init()
