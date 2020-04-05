@@ -10,10 +10,6 @@ Modules
 
     An alias of ``argparse``.
 
- collections_abc
-
-    An alias of ``collections.abc``.
-
 
 Classes
 -------

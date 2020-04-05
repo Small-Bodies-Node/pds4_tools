@@ -12,12 +12,13 @@ from .general_objects import Structure, Meta_Class, Meta_Structure
 from .label_objects import Meta_SpectralCharacteristics
 from .data_types import pds_to_numpy_name, PDSdtype
 
-from ..utils.compat import OrderedDict, collections_abc
+from ..utils.compat import OrderedDict
 from ..utils.helpers import is_array_like, dict_extract
 from ..utils.exceptions import PDS4StandardsException
 from ..utils.logging import logger_init
 
 from ..extern import six
+from ..extern.six.moves import collections_abc
 from ..extern.cached_property import threaded_cached_property
 
 # Initialize the logger
