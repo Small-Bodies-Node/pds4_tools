@@ -10,7 +10,7 @@ PDS4 Python Tools - User Manual
     :backlinks: none
 
 1.1  Introduction
-----------------
+-----------------
 
 PDS4 Python Tools are several modules integrated into a Python library to
 provide access to PDS4 data.
