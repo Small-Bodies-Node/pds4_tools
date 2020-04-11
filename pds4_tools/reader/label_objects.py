@@ -579,7 +579,7 @@ class Label(object):
         return string
 
     def to_dict(self, unmodified=None, skip_attributes=True, cast_values=False, cast_ignore=()):
-        """ Generate an `OrderedDict` representation of XML label.
+        """ Generate an ``OrderedDict`` representation of XML label.
 
         Parameters
         ----------

@@ -425,4 +425,4 @@ epub_exclude_files = ['search.html']
 # Ensure out custom CSS gets included.
 # If this ever stops working, see: http://stackoverflow.com/a/32898444
 def setup(app):
-    app.add_stylesheet('css/custom.css')
+    app.add_css_file('css/custom.css')
