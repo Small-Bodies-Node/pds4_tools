@@ -1,21 +1,32 @@
+import os
 from setuptools import setup, find_packages
 
 
-def read(filename):
+local_dir = os.path.dirname(os.path.realpath(__file__))
+
+
+about = {}
+with open(os.path.join(local_dir, 'pds4_tools', '__about__.py')) as f:
+    exec(f.read(), about)
+
+
+def read(filename, full_path=False):
+    if not full_path: filename = os.path.join(local_dir, filename)
     with open(filename, 'r') as file_handler:
         data = file_handler.read()
 
     return data
 
+
 setup(
     name='pds4_tools',
-    version='1.2-dev',
+    version=about['__version__'],
 
     description='Package to read and display NASA PDS4 data',
     long_description=read('README.rst'),
 
-    author='Lev Nagdimunov',
-    author_email='lnagdi1@astro.umd.edu',
+    author=about['__author__'],
+    author_email=about['__email__'],
 
     url='http://sbndev.astro.umd.edu/wiki/Python_PDS4_Tools',
     license='BSD',

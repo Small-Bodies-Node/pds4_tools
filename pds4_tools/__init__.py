@@ -1,8 +1,4 @@
-__author__ = "Lev Nagdimunov"
-__copyright__ = "University of Maryland"
-
-__version__ = "1.2-dev"
-__email__ = "lnagdi1@astro.umd.edu"
+from pds4_tools.__about__ import (__version__, __author__, __email__, __copyright__)
 
 from .reader import pds4_read
 from .viewer import pds4_viewer
