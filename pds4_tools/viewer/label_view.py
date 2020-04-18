@@ -134,14 +134,10 @@ class LabelWindow(SearchableTextWindowMixIn, Window):
         # Retrieve structure-specific sections of labels to show, if requested
         elif (label is None) and (self.structure_label is not None):
 
-            if display_type == 'object label':
-                label = self.structure_label
-
-            elif display_type == 'display settings':
-                label = get_display_settings_for_lid(object_lid, self.full_label)
-
-            elif display_type == 'spectral characteristics':
-                label = get_spectral_characteristics_for_lid(object_lid, self.full_label)
+            label = {'object label':             self.structure_label,
+                     'display settings':         get_display_settings_for_lid(object_lid, self.full_label),
+                     'spectral characteristics': get_spectral_characteristics_for_lid(object_lid, self.full_label),
+                     }.get(display_type)
 
         return label
 
