@@ -2,11 +2,21 @@ os: linux
 dist: xenial
 language: python
 
+_aliases:
+  - &docs
+    python: 3.6
+    install:
+      - pip install sphinx
+      - pip install numpydoc
+    script: sphinx-build -W --keep-going doc _build/html
+
 jobs:
   include:
 
+    - stage: Tests
+
     # Test Code
-    - python: 2.6
+      python: 2.6
       dist: trusty
     - python: 2.7
     - python: 3.3
@@ -19,11 +29,24 @@ jobs:
 
     # Test Docs
     - name: docs
-      python: 3.6
-      install:
-        - pip install sphinx
-        - pip install numpydoc
-      script: sphinx-build -W --keep-going doc _build/html
+      <<: *docs
+
+    # Upload Docs to GitHub Pages
+    - stage: Upload docs to GitHub Pages
+      <<: *docs
+      before_deploy:
+        - VERSION=$(python setup.py --version)
+        - tar -C _build/html -zcf _build/docs_v${VERSION}.tar.gz .
+        - rm -rf _build/html
+      deploy:
+        provider: pages
+        edge: true
+        local_dir: _build/
+        commit_message: Deploy %{project_name}
+        keep_history: false
+        on:
+          all_branches: true
+      if: (type = push) AND ((tag IS present) OR (branch = master))
 
 install:
   - if [[ $TRAVIS_PYTHON_VERSION == 3.3 ]]; then
@@ -38,3 +61,6 @@ install:
 
 script:
   - tox
+
+notifications:
+  if: branch = master
