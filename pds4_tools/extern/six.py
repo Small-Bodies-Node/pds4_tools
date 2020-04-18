@@ -865,12 +865,12 @@ def ensure_binary(s, encoding='utf-8', errors='strict'):
     """Coerce **s** to six.binary_type.
 
     For Python 2:
-      - `unicode` -> encoded to `str`
-      - `str` -> `str`
+      - ``unicode`` -> encoded to ``str``
+      - ``str`` -> ``str``
 
     For Python 3:
-      - `str` -> encoded to `bytes`
-      - `bytes` -> `bytes`
+      - ``str`` -> encoded to ``bytes``
+      - ``bytes`` -> ``bytes``
     """
     if isinstance(s, text_type):
         return s.encode(encoding, errors)
@@ -881,15 +881,15 @@ def ensure_binary(s, encoding='utf-8', errors='strict'):
 
 
 def ensure_str(s, encoding='utf-8', errors='strict'):
-    """Coerce *s* to `str`.
+    """Coerce *s* to ``str``.
 
     For Python 2:
-      - `unicode` -> encoded to `str`
-      - `str` -> `str`
+      - ``unicode`` -> encoded to ``str``
+      - ``str`` -> ``str``
 
     For Python 3:
-      - `str` -> `str`
-      - `bytes` -> decoded to `str`
+      - ``str`` -> ``str``
+      - ``bytes`` -> decoded to ``str``
     """
     if not isinstance(s, (text_type, binary_type)):
         raise TypeError("not expecting type '%s'" % type(s))
@@ -904,12 +904,12 @@ def ensure_text(s, encoding='utf-8', errors='strict'):
     """Coerce *s* to six.text_type.
 
     For Python 2:
-      - `unicode` -> `unicode`
-      - `str` -> `unicode`
+      - ``unicode`` -> ``unicode``
+      - ``str`` -> ``unicode``
 
     For Python 3:
-      - `str` -> `str`
-      - `bytes` -> decoded to `str`
+      - ``str`` -> ``str``
+      - ``bytes`` -> decoded to ``str``
     """
     if isinstance(s, binary_type):
         return s.decode(encoding, errors)
