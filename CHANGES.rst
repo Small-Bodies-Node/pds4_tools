@@ -1,6 +1,43 @@
-[1.2-dev]
+[1.2] - 2020-10-04
+==================
 
-...
+Reader
+------
+
+**Changed**
+
+- `Label.to_string` will preserve trailing whitespace in multi-line strings
+- `download_file` will fall back to system certificates if Certifi is available and fails
+
+**Fixed**
+
+- TableDelimited read-in when using semi-colon delimiter
+- Array read-in when label contains an empty Object_Statistics
+- `StructureList.__getitem__` can still retrieve by name when LID is present
+- `ArrayStructure.as_masked` will work when data has no masked values
+- `data_type_convert_dates` will work for datetimes with fractional seconds
+- `Label.to_string` will pretty print empty elements
+- URLOpen deprecation warnings for cafile under Python 3.6+
+
+Viewer
+------
+
+**Added**
+
+- Added 'Identification Area', 'Observation Area' and 'File Area' to Label View -> View menu
+- Following methods are now exposed: ``Window.get_window_title``, ``Window.set_window_title``,
+  ``Window.set_window_geometry``, ``Window.show_window`` and ``Window.hide_window``.
+
+**Changed**
+
+- ``pds4_tools.view`` will warn when IPython is already initialized with non-TK backend
+
+**Fixed**
+
+- Hiding tick labels in Plot View
+- Label View search after changing which label is shown via View menu
+- SyntaxWarning in Plot View under Python 3.8+
+
 
 [1.1] - 2019-03-30
 ==================
