@@ -235,7 +235,7 @@ def new_array(input, no_scale=False, no_bitmask=False, masked=None, copy=True, *
         array_structure.data = array.view(array_type)
 
         # Set correct fill value if our data is masked (necessary only on NumPy < v1.13)
-        if masked:
+        if masked and isinstance(array, np.ma.MaskedArray):
             array_structure.data.set_fill_value(array.fill_value)
 
     return array_structure

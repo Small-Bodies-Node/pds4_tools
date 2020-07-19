@@ -11,7 +11,7 @@ import numpy as np
 from . import PDS4ToolsTestCase
 
 from ..reader.core import pds4_read
-from ..reader.data import PDS_ndarray
+from ..reader.data import PDS_ndarray, PDS_marray
 from ..reader.data_types import data_type_convert_dates
 from ..reader.array_objects import ArrayStructure
 from ..reader.table_objects import TableStructure, TableManifest
@@ -1304,6 +1304,20 @@ class TestMaskedData(PDS4ToolsTestCase):
         # Test in arrays
         array = self.structures[1].as_masked()
         assert np.isclose(array.data.fill_value, 3994967214)
+
+    def test_no_mask(self):
+
+        structures = pds4_read(self.data('äf.xml'), lazy_load=True, quiet=True)
+
+        # Test ArrayStructure.as_masked on arrays without Special_Constants
+        structure1 = structures['data_Primary']
+        _check_array_equal(structure1.data, structure1.as_masked().data, structure1.data.dtype)
+        assert(isinstance(structure1.as_masked().data, PDS_marray))
+
+        # Test TableStructure.as_masked on tables without Special_Constants
+        structure2 = structures['data_Engineering']
+        _check_array_equal(structure2.data, structure2.as_masked().data, structure2.data.dtype)
+        assert(isinstance(structure2.as_masked().data, PDS_marray))
 
 
 class TestDownloadFile(PDS4ToolsTestCase):
