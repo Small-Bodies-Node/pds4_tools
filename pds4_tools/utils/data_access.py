@@ -4,6 +4,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import os
+import ssl
 import atexit
 import tempfile
 
@@ -90,15 +91,29 @@ def download_file(url, force=False, block_size=65536, timeout=10):
         logger.info('Downloading URL: {0} ... '.format(url_original), end='')
 
         # Use Certifi where available (avoids SSL verification errors on older platforms and some architectures)
-        cafile = None if (certifi is None) else certifi.where()
+        kwargs = {}
+        if certifi is not None:
+
+            try:
+                kwargs['context'] = ssl.create_default_context(cafile=certifi.where())
+
+            # SSLContext and context argument available from Python 2.7.9+
+            except AttributeError:
+                pass
 
         # Open the connection to remote URL (should not download content)
         try:
-            remote = urllib.request.urlopen(url, timeout=timeout, cafile=cafile)
 
-        # CA File available from Python 2.7.9+
-        except TypeError:
-            remote = urllib.request.urlopen(url, timeout=timeout)
+            try:
+                remote = urllib.request.urlopen(url, timeout=timeout, **kwargs)
+
+            # If Certifi is available but received an SSL error, try system default certificates
+            except urllib.error.URLError as e:
+
+                if (certifi is not None) and isinstance(e.reason, ssl.SSLError):
+                    remote = urllib.request.urlopen(url, timeout=timeout)
+                else:
+                    raise
 
         # Improve error message for unexpected errors
         except urllib.error.URLError as e:
@@ -112,7 +127,7 @@ def download_file(url, force=False, block_size=65536, timeout=10):
                 except AttributeError:
                     pass
 
-            raise e
+            raise six.raise_from(e, None)
 
         # Obtain size of file to download
         info = remote.info()
