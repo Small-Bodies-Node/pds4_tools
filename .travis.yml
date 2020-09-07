@@ -104,4 +104,4 @@ script:
   - tox
 
 notifications:
-  if: (type = push) and (branch = master)
+  if: (type = push) AND ((tag IS present) OR (branch = master))
