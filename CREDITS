@@ -2,7 +2,6 @@ Authors:
 
  Lev Nagdimunov
 
-
 Contributors:
 
   Tilden Barnes
@@ -15,10 +14,10 @@ Special Thanks:
    Michael F. A'Hearn
    Ludmilla Kolokolova
    Anne Raugh
-
+   James M. Bauer
 
 Other Credits:
 
   NASA PDS-Small Bodies Node for funding this project.
-  PyInstaller for binary packaging.
+  PyInstaller and Py2App for binary packaging.
   SAOImage DS9 and fv FITS Viewer for inspiration.
