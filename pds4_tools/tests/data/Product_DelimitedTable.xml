@@ -160,6 +160,7 @@
                         Spacecraft event time (UT) for this data record.
                     </description>
                 </Field_Delimited>
+
                 <Field_Delimited>
                     <name>DURATION</name>
                     <field_number>3</field_number>
@@ -172,6 +173,7 @@
                         performed (seconds).
                     </description>
                 </Field_Delimited>
+
                 <Field_Delimited>
                     <name>MODE</name>
                     <field_number>4</field_number>
@@ -344,6 +346,38 @@
 
             </Record_Delimited>
         </Table_Delimited>
+
+       <Table_Delimited>
+            <local_identifier>LF_TAB_DELIMITED_TABLE</local_identifier>
+            <offset unit="byte">2195</offset>
+            <parsing_standard_id>PDS DSV 1</parsing_standard_id>
+            <records>3</records>
+            <record_delimiter>Line-Feed</record_delimiter>
+            <field_delimiter>Horizontal Tab</field_delimiter>
+            <Record_Delimited>
+                <fields>3</fields>
+                <groups>0</groups>
+
+                <Field_Delimited>
+                   <name>id</name>
+                   <data_type>ASCII_Integer</data_type>
+                   <description>Event ID; a unique event ID number</description>
+                </Field_Delimited>
+
+                <Field_Delimited>
+                   <name>start_time</name>
+                   <data_type>ASCII_String</data_type>
+                   <description>Event start date and time</description>
+                </Field_Delimited>
+
+                <Field_Delimited>
+                   <name>source</name>
+                   <data_type>ASCII_String</data_type>
+                   <description>Event source: science, MAVEN Integrated Report, or SPICE kernels</description>
+                </Field_Delimited>
+            </Record_Delimited>
+      </Table_Delimited>
+
     </File_Area_Observational>
     
 </Product_Observational>

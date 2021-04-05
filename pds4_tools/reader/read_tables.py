@@ -854,8 +854,13 @@ def read_table_data(table_structure, no_scale, decode_strings, masked):
     # Special processing for delimited tables
     if table_structure.meta_data.is_delimited():
 
+        delimiter_name = table_structure.meta_data['record_delimiter'].lower()
+        record_delimiter = {'line-feed': b'\n',
+                            'carriage-return line-feed': b'\r\n'
+                           }.get(delimiter_name, None)
+
         # Split the byte data into records
-        table_byte_data = table_byte_data.split(b'\r\n')[0:num_records]
+        table_byte_data = table_byte_data.split(record_delimiter)[0:num_records]
 
         # Obtain adjusted records (to remove quotes) and start bytes (2D array_like, with first dimension
         # the field number and the second dimension the record number, and the value set to the start byte
