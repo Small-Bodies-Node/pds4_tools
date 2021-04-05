@@ -354,12 +354,11 @@ class TestDelimitedTable(PDS4ToolsTestCase):
 
         super(TestDelimitedTable, self).setup()
 
-        structures = pds4_read(self.data('Product_DelimitedTable.xml'), lazy_load=True, quiet=True)
-        self.structure = structures[0]
+        self.structures = pds4_read(self.data('Product_DelimitedTable.xml'), lazy_load=True, quiet=True)
 
     def test_data(self):
 
-        structure = self.structure
+        structure = self.structures[0]
 
         # Test ASCII_Strings
         strings1 = ['a', 'b', 'c', 'd', 'e']
@@ -399,6 +398,12 @@ class TestDelimitedTable(PDS4ToolsTestCase):
         # Test miscellaneous
         assert len(structure.data.dtype) == 6
         assert len(structure.data) == 20
+
+        # Test line-feed as record delimiter
+        structure = self.structures[2]
+
+        assert structure.field(0)[1] == 2
+        assert structure.field(2)[2] == 'SPICE kernels'
 
 
 class TestBinaryTable(PDS4ToolsTestCase):
@@ -475,11 +480,6 @@ class TestGroupFields(PDS4ToolsTestCase):
         _check_array_equal(structure.field(2)[3, 7, 1:4], [277.80563195,  281.21064631,  279.24594501], 'float64')
 
         # Test via delimited tables
-        structures = pds4_read(self.data('Product_DelimitedTable.xml'), lazy_load=True, quiet=True)
-        structure = structures[1]
-
-        # Test via delimited tables
-
         structures = pds4_read(self.data('Product_DelimitedTable.xml'), lazy_load=True, quiet=True)
         structure = structures[1]
 

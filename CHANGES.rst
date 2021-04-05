@@ -1,7 +1,9 @@
 [1.3] - TBD
 ===========
 
-...
+**Changed**...
+
+- Allow line-feed as Table record delimiter due to PDS4 Standard change
 
 [1.2] - 2020-10-04
 ==================
