@@ -111,7 +111,7 @@ elementâ€™s text is ``65``.
 
 The ``.label`` attribute of a `StructureList` or a `Structure` is a `Label` instance,
 another PDS4 Tools object. It provides access to the XML label content, although
-some knowledge of `XPATH expressions <https://docs.python.org/2/library/xml.etree.elementtree.html#example>`_
+some knowledge of `XPATH expressions <https://docs.python.org/3/library/xml.etree.elementtree.html#example>`_
 is generally required for search and usage. You may however use the
 ``label.to_dict()`` and ``label.to_string()`` methods to obtain more familiar
 access. Below we provide some examples of using ``.label`` and ``.meta_data``.
@@ -149,7 +149,7 @@ To search for elements outside of the core PDS namespace, one may use,
     '2019-05-24T10:30:06.724Z'
 
 For more details, we encourage you to see the `Supported XPATH syntax section
-<https://docs.python.org/2/library/xml.etree.elementtree.html#example>`_
+<https://docs.python.org/3/library/xml.etree.elementtree.html#example>`_
 of the Python manual for ElementTree, which underlines the implementation of
 the PDS4 Tools' Label object.
 
