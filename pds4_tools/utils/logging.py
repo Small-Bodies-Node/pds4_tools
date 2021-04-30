@@ -177,7 +177,7 @@ class PDS4Logger(logging.Logger, object):
         for i, handler in enumerate(self.stream_handlers):
             handler.terminator = ends[i]
 
-    def _log(self, *args, **kwargs):
+    def _log(self, level, *args, **kwargs):
         """
         Subclassed to allow *end* and *max_repeat* arguments to every logger log call (e.g. ``logger.info``,
         ``logger.warning``, etc)
@@ -191,6 +191,8 @@ class PDS4Logger(logging.Logger, object):
         -------
         None
         """
+
+        self.propagate = not (self.is_quiet() and level < _quiet)
 
         msg = args[1]
         max_repeat = kwargs.pop('max_repeat', None)
@@ -211,7 +213,7 @@ class PDS4Logger(logging.Logger, object):
             self.set_terminators(end)
 
         # Log the message
-        super(PDS4Logger, self)._log(*args, **kwargs)
+        super(PDS4Logger, self)._log(level, *args, **kwargs)
 
         # Revert line terminator to previous/default setting
         if end is not None:
