@@ -449,10 +449,18 @@ def data_type_convert_table_ascii(data_type, data, mask_numeric_nulls=False, dec
         data = data.replace(b'false', b'0')
         data = data.split(b'@')
 
+        data = np.array(data)
+        if mask_numeric_nulls:
+            mask_array = np.zeros(len(data), dtype='bool')
+            for i, datum in enumerate(data):
+                if datum.strip() == b'':
+                    mask_array[i] = True
+            data[mask_array] = b'0'
+
         try:
-            data = np.asarray(data).astype(dtype, copy=False)
+            data = data.astype(dtype, copy=False)
         except TypeError:
-            data = np.asarray(data).astype(dtype)
+            data = data.astype(dtype)
 
     # Handle ASCII numeric types and ASCII/UTF-8 strings
     else:
