@@ -22,8 +22,11 @@ def logger_init():
         The global logger for all pds4 tools.
     """
 
+    _Logger = logging.getLoggerClass()
     logging.setLoggerClass(PDS4Logger)
     logger = logging.getLogger('PDS4ToolsLogger')
+    logging.setLoggerClass(_Logger)
+
     logger.setLevel(_loud)
 
     # If this is a new logger then initialize its config
