@@ -267,10 +267,15 @@ class MPLCompat(object):
     def _get_deprecation_warning():
 
         # Allow safe import of MatplotlibDeprecationWarning
+        # MPL v3+
         try:
-            from matplotlib.cbook.deprecation import MatplotlibDeprecationWarning
+            from matplotlib import MatplotlibDeprecationWarning
         except ImportError:
-            MatplotlibDeprecationWarning = DeprecationWarning
+            # MPL v1.3+
+            try:
+                from matplotlib.cbook import MatplotlibDeprecationWarning
+            except ImportError:
+                MatplotlibDeprecationWarning = DeprecationWarning
 
         return MatplotlibDeprecationWarning
 
