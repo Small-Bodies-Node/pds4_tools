@@ -192,8 +192,6 @@ class PDS4Logger(logging.Logger, object):
         None
         """
 
-        self.propagate = not (self.is_quiet() and level < _quiet)
-
         msg = args[1]
         max_repeat = kwargs.pop('max_repeat', None)
         end = kwargs.pop('end', None)
@@ -212,8 +210,15 @@ class PDS4Logger(logging.Logger, object):
             old_ends = [handler.terminator for handler in self.stream_handlers]
             self.set_terminators(end)
 
+        # Emulate PDS4Logger.setLevel(_quiet) while still emitting to "log_handler"
+        propagate = self.propagate
+        self.propagate = propagate and not (self.is_quiet() and level < _quiet)
+
         # Log the message
         super(PDS4Logger, self)._log(level, *args, **kwargs)
+
+        # Revert propagation to previous/default setting
+        self.propagate = propagate
 
         # Revert line terminator to previous/default setting
         if end is not None:
