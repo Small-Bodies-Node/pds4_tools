@@ -1,5 +1,5 @@
 .. image:: https://img.shields.io/travis/Small-Bodies-Node/pds4_tools/master.svg?label=Travis%20CI
-    :target: https://travis-ci.org/Small-Bodies-Node/pds4_tools
+    :target: https://travis-ci.com/Small-Bodies-Node/pds4_tools
 
 .. image:: https://img.shields.io/appveyor/ci/LevN0/pds4-tools/master.svg?label=AppVeyor
     :target: https://ci.appveyor.com/project/LevN0/pds4-tools
