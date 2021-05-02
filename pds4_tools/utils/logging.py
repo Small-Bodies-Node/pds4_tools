@@ -22,8 +22,11 @@ def logger_init():
         The global logger for all pds4 tools.
     """
 
+    _Logger = logging.getLoggerClass()
     logging.setLoggerClass(PDS4Logger)
     logger = logging.getLogger('PDS4ToolsLogger')
+    logging.setLoggerClass(_Logger)
+
     logger.setLevel(_loud)
 
     # If this is a new logger then initialize its config
@@ -174,7 +177,7 @@ class PDS4Logger(logging.Logger, object):
         for i, handler in enumerate(self.stream_handlers):
             handler.terminator = ends[i]
 
-    def _log(self, *args, **kwargs):
+    def _log(self, level, *args, **kwargs):
         """
         Subclassed to allow *end* and *max_repeat* arguments to every logger log call (e.g. ``logger.info``,
         ``logger.warning``, etc)
@@ -207,8 +210,15 @@ class PDS4Logger(logging.Logger, object):
             old_ends = [handler.terminator for handler in self.stream_handlers]
             self.set_terminators(end)
 
+        # Emulate PDS4Logger.setLevel(_quiet) while still emitting to "log_handler"
+        propagate = self.propagate
+        self.propagate = propagate and not (self.is_quiet() and level < _quiet)
+
         # Log the message
-        super(PDS4Logger, self)._log(*args, **kwargs)
+        super(PDS4Logger, self)._log(level, *args, **kwargs)
+
+        # Revert propagation to previous/default setting
+        self.propagate = propagate
 
         # Revert line terminator to previous/default setting
         if end is not None:
