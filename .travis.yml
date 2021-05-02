@@ -90,17 +90,31 @@ jobs:
       if: (type = push) AND (tag IS present)
 
 install:
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.6 ]]; then
+      PYPI_URL=https://files.pythonhosted.org/packages/source;
+      wget $PYPI_URL/p/pyOpenSSL/pyOpenSSL-0.13.tar.gz;
+      wget $PYPI_URL/p/pyasn1/pyasn1-0.1.9.tar.gz;
+      wget $PYPI_URL/n/ndg_httpsclient/ndg_httpsclient-0.4.0.tar.gz;
+      pip install pyOpenSSL-0.13.tar.gz;
+      pip install pyasn1-0.1.9.tar.gz;
+      pip install ndg_httpsclient-0.4.0.tar.gz;
+      sed -i '53,57s/..//' $VIRTUAL_ENV/lib/python2.6/site-packages/pip/_vendor/requests/__init__.py;
+      pip install virtualenv==14.0.5;
+    fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then
+      pip install tox==3.7.0;
+    fi
   - if [[ $TRAVIS_PYTHON_VERSION == 3.3 ]]; then
       pip install virtualenv==15.2.0;
       pip install pluggy==0.5.2;
       pip install tox==2.9.1;
     fi
-  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then
-      pip install tox==3.7.0;
-    fi
   - pip install tox-travis
 
 script:
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.6 ]]; then
+      export PYTHONUSERBASE=$VIRTUAL_ENV;
+    fi
   - tox
 
 notifications:
