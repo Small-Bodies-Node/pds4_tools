@@ -4,6 +4,7 @@ from __future__ import division
 from __future__ import unicode_literals
 
 import sys
+import copy
 import logging
 
 from ..extern import six
@@ -373,6 +374,14 @@ class PDS4SilentHandler(PDS4StreamHandler):
     def emit(self, record):
         """ Saves emitted record.
 
+        Emitted record is shallow copied, then message is modified as described. First, we insert
+        the current line terminator, as otherwise this information would be lost. Second, if the
+        current or prior record contains a stand alone carriage-return character, we save only
+        the final state of the stream output as it would be if printed to a terminal. Generally
+        carriage return is likely only to be used to overwrite old messages on the same line
+        (e.g. how a download progress bar works); saving each message would pollute the message
+        queue, and potentially take a huge amount of memory.
+
         Parameters
         ----------
         record : logger.LogRecord
@@ -384,10 +393,8 @@ class PDS4SilentHandler(PDS4StreamHandler):
         """
 
         # Special processing for messages containing the CR (\r) character
-        # Essentially we save only the final state of the stream output as it would be if printed
-        # to a terminal. Generally carriage return is likely only to be used to overwrite old
-        # messages on the same line (e.g. how a download progress bar works); saving each message
-        # would pollute the message queue, and potentially take a huge amount of memory.
+        # (see docstring for explanation)
+        record = copy.copy(record)
         new_msg = record.msg
         last_msg = self.records[-1].msg if self.records else None
 
