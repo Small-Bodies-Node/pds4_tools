@@ -4,10 +4,12 @@
 **Changed**
 
 - Allow line-feed as Table record delimiter due to PDS4 Standard change
+- Recognize FITS 4.0 as plain-text header due to PDS4 Standards change
 
 **Fixed**
 
 - `PDSdtype` not-equal operator will correctly work under Python2
+
 
 [1.2] - 2020-10-04
 ==================

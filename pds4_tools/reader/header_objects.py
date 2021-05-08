@@ -169,9 +169,9 @@ class HeaderStructure(Structure):
 class Meta_HeaderStructure(Meta_Structure):
     """ Meta data about a PDS4 header data structure.
 
-    Meta data stored in this class is accessed in ``dict``-like fashion.  Normally this meta data originates
-    from the label (e.g., if this is a Header then everything from the opening tag of Header to its closing
-    tag will be stored in this object), via the `from_label` method.
+    Meta data stored in this class is accessed in ``dict``-like fashion.  Normally this meta data
+    originates from the label (e.g., if this is a Header then everything from the opening tag of
+    Header to its closing tag will be stored in this object), via the `from_label` method.
 
     Inherits all Attributes, Parameters and Properties from `Meta_Structure`.
 
@@ -228,8 +228,9 @@ class Meta_HeaderStructure(Meta_Structure):
     def is_plain_text(self):
         """ Obtain whether a Header is in plain text.
 
-        Under the definition of plain-text taken here, this includes all data that contains "only characters
-        of readable material but not its graphical representation [or ."
+        Under the definition of plain-text taken here, this includes all data that contains "only
+        characters of readable material but not its graphical representation nor other objects
+        (images, etc)."
 
         Returns
         -------
@@ -238,7 +239,8 @@ class Meta_HeaderStructure(Meta_Structure):
         """
 
         plain_text_standards = ['7-Bit ASCII Text', 'UTF-8 Text', 'PDS3', 'Pre-PDS3', 'PDS ODL 2',
-                                'PDS DSV 1', 'FITS 3.0', 'VICAR1', 'VICAR2', 'ISIS2 History Label']
+                                'PDS DSV 1', 'FITS 3.0', 'FITS 4.0', 'VICAR1', 'VICAR2',
+                                'ISIS2 History Label']
 
         return self['parsing_standard_id'] in plain_text_standards
 
@@ -246,8 +248,8 @@ class Meta_HeaderStructure(Meta_Structure):
 class HeaderParser(object):
     """ Provides a base class for parsers of any PDS Header object.
 
-    Parsers for specific header objects should inherit from this class. Where a specific parser is not
-    available, this object may serve as a general parser.
+    Parsers for specific header objects should inherit from this class. Where a specific parser
+    is not available, this object may serve as a general parser.
 
     Parameters
     ----------
@@ -318,8 +320,8 @@ class HeaderFITSParser(HeaderPlainTextParser):
         Returns
         -------
         str or unicode
-            A human-readable representation of the FITS header, which leaves it unmodified except for
-            splitting each CARD (80 characters) into their own lines and removing padding.
+            A human-readable representation of the FITS header, which leaves it unmodified except
+            for splitting each CARD (80 characters) into their own lines and removing padding.
         """
 
         data = super(HeaderFITSParser, self).to_string()
