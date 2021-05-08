@@ -1,9 +1,13 @@
 [1.3] - TBD
 ===========
 
-**Changed**...
+**Changed**
 
 - Allow line-feed as Table record delimiter due to PDS4 Standard change
+
+**Fixed**
+
+- `PDSdtype` not-equal operator will correctly work under Python2
 
 [1.2] - 2020-10-04
 ==================

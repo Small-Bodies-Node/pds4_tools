@@ -1231,6 +1231,22 @@ class PDSdtype(object):
 
         return is_equal
 
+    def __ne__(self, other):
+        """ Compare if two data types are not equal.
+
+        Parameters
+        ----------
+        other : str, unicode or PDSdtype
+            A PDS4 data type.
+
+        Returns
+        -------
+        bool
+            True if the data types are not equal. For equality comparison rules, see ``__eq__``.
+        """
+
+        return not (self == other)
+
     def __contains__(self, other):
         """ Check if a data type contains another.
 
