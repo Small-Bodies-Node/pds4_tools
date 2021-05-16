@@ -19,6 +19,7 @@ from ..reader.label_objects import Label
 
 from ..utils import compat
 from ..utils.compat import OrderedDict
+from ..utils.deprecation import PDS4ToolsDeprecationWarning, deprecated, rename_parameter, delete_parameter
 
 from ..extern import six
 
@@ -1341,6 +1342,146 @@ class TestDownloadFile(PDS4ToolsTestCase):
 
         assert xml_equal(structures_web1.label, structures_local.label)
         assert xml_equal(structures_web2.label, structures_local.label)
+
+
+class TestDeprecation(PDS4ToolsTestCase):
+
+    def test_deprecated(self):
+
+        @deprecated('0.0')
+        class DeprecatedClass(object):
+
+            def __init__(self, arg):
+                self._arg = arg
+
+            @deprecated('0.0')
+            @property
+            def deprecated_property(self):
+                return self._arg
+
+        @deprecated('0.0')
+        def deprecated_func():
+            return None
+
+        # Test deprecated class
+        with pytest.warns(PDS4ToolsDeprecationWarning, match=r'0.0'):
+            obj = DeprecatedClass('value')
+
+        # Test deprecated property
+        with pytest.warns(PDS4ToolsDeprecationWarning, match=r'0.0'):
+            val = obj.deprecated_property
+
+        # Test deprecated function
+        with pytest.warns(PDS4ToolsDeprecationWarning, match=r'0.0'):
+            val = deprecated_func()
+
+    def test_rename_parameter(self):
+
+        class TestClass(object):
+
+            @rename_parameter('0.0', 'arg2_old', 'arg2')
+            def __init__(self, arg1, arg2=None, arg3=True):
+                self.arg1 = arg1
+                self.arg2 = arg2
+
+        @rename_parameter('0.0', 'arg2', 'arg3')
+        def test_function(arg1, arg3):
+            return arg1 + arg3
+
+        # Test renaming keyword argument with-in a method
+        with pytest.warns(PDS4ToolsDeprecationWarning, match=r'renamed.*0.0'):
+            obj = TestClass(0, arg2_old=1)
+            assert obj.arg2 == 1
+
+        # Test renaming positional argument with-in a function
+        with pytest.warns(PDS4ToolsDeprecationWarning, match=r'renamed.*0.0'):
+            val = test_function(1, arg2=2)
+            assert val == 3
+
+        # Test for lack of spurious warnings
+        with pytest.warns(None) as record:
+            obj = TestClass(0, arg2=2, arg3=False)
+            obj = TestClass(0, arg3=False)
+            test_function(1, 2)
+        assert not record
+
+    def test_delete_parameter(self):
+
+        class TestClass(object):
+
+            @delete_parameter('0.0', 'arg2', alternative='arg3')
+            def __init__(self, arg1, arg2=None, arg3=True):
+                self.arg1 = arg1
+                self.arg3 = arg3
+
+        @delete_parameter('0.0', 'arg2')
+        def test_function(arg1, arg2):
+            return arg1 + arg2
+
+        # Test deleting keyword argument with-in a method
+        with pytest.warns(PDS4ToolsDeprecationWarning, match=r'0.0.*arg3'):
+            obj = TestClass(0, arg2='hello')
+
+        # Test deleting positional argument with-in a function
+        with pytest.warns(PDS4ToolsDeprecationWarning, match=r'0.0'):
+            val = test_function(1, arg2=2)
+            assert val == 3
+
+        PY26 = sys.version_info[0:2] == (2, 6)
+        if not PY26:
+            with pytest.warns(PDS4ToolsDeprecationWarning, match=r'0.0'):
+                val = test_function(1, 2)
+                assert val == 3
+
+        # Test for lack of spurious warnings
+        with pytest.warns(None) as record:
+            obj = TestClass(0)
+            obj = TestClass(0, arg3=True)
+        assert not record
+    
+    def test_deprecated_docstring(self):
+        
+        @deprecated('0.0')
+        class DeprecatedClass(object):
+            """ Class description.
+
+            Notes
+            -----
+            Test note.
+            """
+            def __init__(self, arg):
+                self._arg = arg
+
+            @deprecated('0.0')
+            @property
+            def deprecated_property(self):
+                return self._arg
+
+        @deprecated('0.0')
+        def deprecated_func():
+            """ Function description.
+
+            Returns
+            -------
+            None
+            """
+            pass
+
+        # Test docstring adjustment in deprecated class
+        obj = DeprecatedClass
+        if sys.version_info[0] > 2:
+            assert '[Deprecated]' in obj.__doc__
+            assert '.. deprecated::' in obj.__doc__
+
+        # Test docstring adjustment in deprecated property
+        prop = obj.deprecated_property
+        assert '[Deprecated]' in prop.__doc__
+        assert '.. deprecated::' in prop.__doc__
+
+        # Test docstring adjustment in deprecated function
+        func = deprecated_func
+        assert '[Deprecated]' in func.__doc__
+        assert '.. deprecated::' in func.__doc__
 
 
 def _check_array_equal(unknown_array, known_array, known_typecode):
