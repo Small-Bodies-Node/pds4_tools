@@ -355,7 +355,7 @@
             <record_delimiter>Line-Feed</record_delimiter>
             <field_delimiter>Horizontal Tab</field_delimiter>
             <Record_Delimited>
-                <fields>3</fields>
+                <fields>4</fields>
                 <groups>0</groups>
 
                 <Field_Delimited>
@@ -368,6 +368,12 @@
                    <name>start_time</name>
                    <data_type>ASCII_String</data_type>
                    <description>Event start date and time</description>
+                </Field_Delimited>
+
+                <Field_Delimited>
+                   <name>tec_enabled</name>
+                   <data_type>ASCII_Boolean</data_type>
+                   <description>Indicates whether the Thermo-electric cooler is active.</description>
                 </Field_Delimited>
 
                 <Field_Delimited>

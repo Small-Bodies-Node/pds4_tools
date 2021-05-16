@@ -935,7 +935,7 @@ def read_table_data(table_structure, no_scale, decode_strings, masked):
                 extracted_data = data_type_convert_table_binary(*args, **kwargs)
 
             elif table_structure.meta_data.is_delimited():
-                extracted_data = data_type_convert_table_ascii(*args, mask_numeric_nulls=True, **kwargs)
+                extracted_data = data_type_convert_table_ascii(*args, mask_nulls=True, **kwargs)
 
             else:
                 raise TypeError('Unknown table type: {0}'.format(table_structure.type))

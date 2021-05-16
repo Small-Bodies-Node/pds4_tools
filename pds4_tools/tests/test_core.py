@@ -376,12 +376,14 @@ class TestDelimitedTable(PDS4ToolsTestCase):
         assert structure.field(3)[16] == 'MODE \r15'
         assert structure.field(3)[17] == 'MODE \n13'
 
-        # Ensure empty fields get proper value depending on their data type
+        # Ensure empty character and numeric fields get proper value depending on their data type
         assert structure.field(0)[12] == ''
         assert structure.field(0)[13] == ''
         assert structure.field(2)[13] is np.ma.masked
         assert structure.field(2)[14] is np.ma.masked
         assert structure.field(5)[7, 2] is np.ma.masked
+        assert structure.field(2).fill_value == 0
+        assert np.count_nonzero(structure.field(5).fill_value) == 0
 
         # Ensure blankspace is preserved, both before and after, for strings
         assert structure.field(0)[14] == ' l '
@@ -404,7 +406,11 @@ class TestDelimitedTable(PDS4ToolsTestCase):
         structure = self.structures[2]
 
         assert structure.field(0)[1] == 2
-        assert structure.field(2)[2] == 'SPICE kernels'
+        assert structure.field(3)[2] == 'SPICE kernels'
+
+        # Ensure empty boolean fields get proper value
+        assert structure.field(2)[1] is np.ma.masked
+        _check_array_equal(structure.field(2).filled(), [True, False, False], 'bool')
 
 
 class TestBinaryTable(PDS4ToolsTestCase):
