@@ -662,6 +662,10 @@ class PDS_marray(np.ma.MaskedArray, PDS_ndarray):
             name = pds_to_numpy_name(meta_data.full_name())
 
         if isinstance(data, np.ma.MaskedArray):
-            self[name].set_fill_value(data.fill_value)
+            # NumPy does not properly set fill value in record arrays for multi-dimensional fields
+            if isinstance(self.fill_value[name], np.ndarray):
+                self.fill_value[name][:] = data.fill_value
+            else:
+                self[name].set_fill_value(data.fill_value)
 
         super(PDS_marray, self).set_field(data, meta_data, name=name)

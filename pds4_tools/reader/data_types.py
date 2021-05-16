@@ -7,6 +7,7 @@ import datetime as dt
 
 import numpy as np
 
+from ..utils.deprecation import rename_parameter
 from ..utils.logging import logger_init
 
 from ..extern import six
@@ -403,12 +404,13 @@ def data_type_convert_array(data_type, byte_string):
     return byte_string
 
 
-def data_type_convert_table_ascii(data_type, data, mask_numeric_nulls=False, decode_strings=False):
+@rename_parameter('1.3', 'mask_numeric_nulls', 'mask_nulls')
+def data_type_convert_table_ascii(data_type, data, mask_nulls=False, decode_strings=False):
     """
     Cast data originating from a PDS4 Table_Character or Table_Delimited data structure in the form
-    of an array_like[byte_string] to an array with the proper dtype for *data_type*. Most
-    likely this data is a single Field, or a single repetition of a Field, since different Fields have
-    different data types.
+    of an array_like[byte_string] to an array with the proper dtype for *data_type*. Most likely this
+    data is a single Field, or a single repetition of a Field, since different Fields have different
+    data types.
 
     Parameters
     ----------
@@ -416,14 +418,14 @@ def data_type_convert_table_ascii(data_type, data, mask_numeric_nulls=False, dec
         The PDS4 data type that the data should be cast to.
     data : array_like[str or bytes]
         Flat array of PDS4 byte strings from a Table_Character data structure.
-    mask_numeric_nulls : bool
-        If True, then *data* may contain empty values for a numeric *data_type*. If such nulls are found,
-        they will be masked out and a masked array will be returned. Defaults to False, in which case
-        an exception will be raised should an empty value be found in a numeric field.
+    mask_nulls : bool
+        If True, then *data* may contain empty values for a numeric and boolean *data_type*'s. If such
+        nulls are found, they will be masked out and a masked array will be returned. Defaults to False,
+        in which case an exception will be raised should an empty value be found in such a field.
     decode_strings : bool, optional
         If True, and the returned dtype is a form of character, then the obtained dtype will be a form of
-        unicode. If False, then for character data the obtained dtype will remain byte strings. Defaults to
-        False.
+        unicode. If False, then for character data the obtained dtype will remain byte strings. Defaults
+        to False.
 
     Returns
     -------
@@ -437,8 +439,25 @@ def data_type_convert_table_ascii(data_type, data, mask_numeric_nulls=False, dec
     # Obtain dtype that these data will take
     dtype = pds_to_numpy_type(data_type, decode_strings=decode_strings)
 
-    # Stores mask for mask_numeric_nulls cases
+    # Stores mask and fill value used when *mask_nulls* is enabled
+    # (a fill value of None uses NumPy's default for the data type)
     mask_array = np.zeros(0)
+    fill_value = 0
+
+    # Fill any empty numeric or bool values with a 0, if requested
+    if not np.issubdtype(dtype, np.character) and mask_nulls:
+
+        mask_array = np.zeros(len(data), dtype='bool')
+        data = np.array(data, dtype='object', copy=True)
+
+        # Assign mask to True where necessary (so that we remember which values need to be masked),
+        # then set value in data array to 0 (this value will be masked). The syntax here is used
+        # to speed up operations.
+        for i, datum in enumerate(data):
+            if datum.strip() == b'':
+                mask_array[i] = True
+
+        data[mask_array] = six.ensure_binary(str(fill_value))
 
     # Special handling for boolean due to e.g. bool('false') = True
     if data_type == 'ASCII_Boolean':
@@ -454,74 +473,58 @@ def data_type_convert_table_ascii(data_type, data, mask_numeric_nulls=False, dec
         except TypeError:
             data = np.asarray(data).astype(dtype)
 
-    # Handle ASCII numeric types and ASCII/UTF-8 strings
-    else:
+    # Convert ASCII numerics into their proper data type
+    elif not np.issubdtype(dtype, np.character):
 
-        # Convert ascii numerics into their proper data type
-        if not np.issubdtype(dtype, np.character):
+        # We convert binary, octal and hex integers to base 10 integers on the assumption that
+        # it is more likely a user will want to do math with them so we cannot store them as strings
+        # and to base 10 in order to be consistent on the numerical meaning of all values
+        numeric_base = {'ASCII_Numeric_Base2': 2,
+                        'ASCII_Numeric_Base8': 8,
+                        'ASCII_Numeric_Base16': 16,
+                        }.get(data_type.name, 10)
 
-            # Fill any empty values with a 0, if requested
-            if mask_numeric_nulls:
+        # We can use NumPy to convert floats to a numeric type, but not integers. The latter is
+        # because in case an integer does not fit into a NumPy C-type (since some ascii integer types
+        # are unbounded in PDS4), there appears to be no method to tell NumPy to convert each string
+        # to be a numeric Python object. Therefore we use pure Python to convert to numeric Python
+        # objects (i.e, int), and then later convert the list into a NumPy array of numeric Python
+        # objects.
+        if np.issubdtype(dtype, np.floating):
 
-                mask_array = np.zeros(len(data), dtype='bool')
+            # Convert ASCII_Reals to numeric type
+            data = np.asarray(data, dtype=dtype)
+
+        else:
+
+            # Make a copy such that original data is unmodified (if we did not already make a copy above)
+            if not mask_nulls:
                 data = np.array(data, dtype='object', copy=True)
 
-                # Assign mask to True where necessary (so that we remember which values need to be masked),
-                # then set value in data array to 0 (this value will be masked). The syntax here is used
-                # to speed up operations.
-                for i, datum in enumerate(data):
-                    if datum.strip() == b'':
-                        mask_array[i] = True
+            # Convert ASCII_Integers to numeric type. The syntax here is used to speed up operations,
+            # especially for delimited tables with many empty values, by explicitly looping over and
+            # casting only non-zero values.
+            for i in np.nditer(np.where(data != '0'), flags=['zerosize_ok']):
+                data[i] = int(data[i], numeric_base)
 
-                data[mask_array] = b'0'
+            data[data == '0'] = 0
 
-            # We convert binary, octal and hex integers to base 10 integers on the assumption that
-            # it is more likely a user will want to do math with them so we cannot store them as strings
-            # and to base 10 in order to be consistent on the numerical meaning of all values
-            numeric_base = {'ASCII_Numeric_Base2': 2,
-                            'ASCII_Numeric_Base8': 8,
-                            'ASCII_Numeric_Base16': 16,
-                            }.get(data_type.name, 10)
+            # Cast down numeric base integers if possible
+            if numeric_base != 10:
+                dtype = get_min_integer_numpy_type(data)
 
-            # We can use NumPy to convert floats to a numeric type, but not integers. The latter is because
-            # in case an integer does not fit into a NumPy C-type (since all ascii integer types are unbounded
-            # in PDS4), there appears to be no method to tell NumPy to convert each string to be a numeric
-            # Python object. Therefore we use pure Python to convert to numeric Python objects (i.e, int),
-            # and then later convert the list into a NumPy array of numeric Python objects.
-            if np.issubdtype(dtype, np.floating):
-
-                # Convert ASCII_Reals to numeric type
-                data = np.asarray(data, dtype=dtype)
-
-            else:
-
-                # Make a copy such that original data is unmodified (if we did not already make a copy above)
-                if not mask_numeric_nulls:
-                    data = np.array(data, dtype='object', copy=True)
-
-                # Convert ASCII_Integers to numeric type. The syntax here is used to speed up operations,
-                # especially for delimited tables with many empty values, by explicitly looping over and
-                # casting only non-zero values.
-                for i in np.nditer(np.where(data != '0'), flags=['zerosize_ok']):
-                    data[i] = int(data[i], numeric_base)
-
-                data[data == '0'] = 0
-
-                # Cast down numeric base integers if possible
-                if numeric_base != 10:
-                    dtype = get_min_integer_numpy_type(data)
-
-        # Decode PDS4 ASCII and UTF-8 strings into unicode/str
-        elif decode_strings:
-            data = decode_bytes_to_unicode(data)
+    # Decode PDS4 ASCII and UTF-8 strings into unicode/str
+    elif decode_strings:
+        data = decode_bytes_to_unicode(data)
 
     # Convert to numpy array (anything that was not already converted above)
     data = np.asanyarray(data, dtype=dtype)
 
-    # Assign mask to numeric data with nulls as needed
-    if mask_numeric_nulls and mask_array.any():
+    # Assign mask and full_value to numeric/bool data with nulls as needed
+    if mask_nulls and mask_array.any():
         data = data.view(np.ma.masked_array)
         data.mask = mask_array
+        data.set_fill_value(fill_value)
 
     # Emit memory efficiency warning if necessary
     if dtype == 'object':
@@ -532,10 +535,9 @@ def data_type_convert_table_ascii(data_type, data, mask_numeric_nulls=False, dec
 
 def data_type_convert_table_binary(data_type, data, decode_strings=False):
     """
-    Cast data originating from a PDS4 Table_Binary data structure in the form of an
-    array_like[byte_string] to an array with the proper dtype for *data_type*. Most likely
-    this data is a single Field, or a single repetition of a Field, since different Fields have different
-    data types.
+    Cast data originating from a PDS4 Table_Binary data structure in the form of an array_like[byte_string]
+    to an array with the proper dtype for *data_type*. Most likely this data is a single Field, or a
+    single repetition of a Field, since different Fields have different data types.
 
     Parameters
     ----------
@@ -545,8 +547,8 @@ def data_type_convert_table_binary(data_type, data, decode_strings=False):
         Flat array of PDS4 byte strings from a Table_Binary data structure.
     decode_strings : bool, optional
         If True, and the returned dtype is a form of character, then the obtained dtype will be a form of
-        unicode. If False, then for character data the obtained dtype will remain byte strings. Defaults to
-        False.
+        unicode. If False, then for character data the obtained dtype will remain byte strings. Defaults
+        to False.
 
     Returns
     -------

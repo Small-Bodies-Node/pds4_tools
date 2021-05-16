@@ -3,12 +3,17 @@
 
 **Changed**
 
-- Allow line-feed as Table record delimiter due to PDS4 Standard change
+- Allow line-feed as Table record delimiter due to PDS4 Standards change
 - Recognize FITS 4.0 as plain-text header due to PDS4 Standards change
+- Empty numeric values in Table_Delimited fields will have a default fill value
+  of 0 instead of NumPy default
+- Deprecated mask_numeric_nulls keyword in `data_type_convert_table_ascii`,
+  use mask_nulls instead
 
 **Fixed**
 
 - `PDSdtype` not-equal operator will correctly work under Python2
+- Table_Delimited crashes on empty values in ASCII_Boolean fields
 
 
 [1.2] - 2020-10-04
