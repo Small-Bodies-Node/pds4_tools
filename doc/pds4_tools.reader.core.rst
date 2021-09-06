@@ -17,7 +17,7 @@ Details
 
 .. function:: pds4_tools.read
 
-    An alias of `pds4_read`.
+    An alias of :func:`pds4_read`.
 
 .. automodule:: pds4_tools.reader.core
     :members:

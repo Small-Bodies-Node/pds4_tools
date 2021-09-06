@@ -1,6 +1,9 @@
 [1.3] - TBD
 ===========
 
+Reader
+------
+
 **Changed**
 
 - Allow line-feed as Table record delimiter due to PDS4 Standards change
@@ -9,6 +12,8 @@
   of 0 instead of NumPy default
 - Deprecated mask_numeric_nulls keyword in `data_type_convert_table_ascii`,
   use mask_nulls instead
+- Propagation to ancestor loggers is now controlled by `pds4_tools.set_loglevel`,
+  off by default
 
 **Fixed**
 

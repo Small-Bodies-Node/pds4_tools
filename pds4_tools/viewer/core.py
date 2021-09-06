@@ -1135,20 +1135,20 @@ def pds4_viewer(filename=None, from_existing_structures=None, lazy_load=True, qu
     parameters, opening a GUI that has a File->Open function to select
     desired label to be read-in and displayed.
 
-    Parameters:
-
-        filename : str or unicode, optional
-            The filename, including full or relative path if necessary, of
-            the PDS4 label describing the data to be viewed.
-        from_existing_structures : StructureList, optional
-            An existing StructureList, as returned by pds4_read(), to view. Takes
-            precedence if given together with filename.
-        lazy_load : bool, optional
-            Do not read-in data of each data structure until attempt to view said
-            data structure. Defaults to True.
-        quiet : bool, optional
-            Suppresses all info/warnings from being output and displayed.
-            Defaults to False.
+    Parameters
+    ----------
+    filename : str or unicode, optional
+        The filename, including full or relative path if necessary, of
+        the PDS4 label describing the data to be viewed.
+    from_existing_structures : StructureList, optional
+        An existing StructureList, as returned by pds4_read(), to view. Takes
+        precedence if given together with filename.
+    lazy_load : bool, optional
+        Do not read-in data of each data structure until attempt to view said
+        data structure. Defaults to True.
+    quiet : bool, int or str, optional
+        Suppresses all info/warnings from being output and displayed. Supports
+        log-level style options for more fine grained control. Defaults to False.
     """
 
     from .summary_view import open_summary
