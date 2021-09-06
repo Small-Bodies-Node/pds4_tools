@@ -1002,7 +1002,7 @@ def mask_special_constants(data, special_constants, mask_strings=False, copy=Fal
             # warnings/errors. Thus we circumvent this by assuming equality is False when this is guaranteed.
             compatible_dtypes = (data.dtype.kind == np.asarray(value).dtype.kind) or \
                                 (data.dtype.kind in 'fui' and np.asarray(value).dtype.kind in 'ui') or \
-                                (data.dtype == np.object) or (np.asarray(value).dtype == np.object)
+                                (data.dtype == np.object_) or (np.asarray(value).dtype == np.object_)
 
             # Mask the Special_Constants, except for valid_* constants (which are actually valid data)
             if (not key.startswith('valid_')) and compatible_dtypes:
