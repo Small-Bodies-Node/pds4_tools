@@ -13,9 +13,12 @@ from ..extern import six
 _loud = logging.DEBUG
 _quiet = logging.ERROR
 
+# User-configured log level
+_user_level = None
+
 
 def logger_init():
-    """ Initializes or obtains the logger and its handlers.
+    """ Initializes or obtains the logger for PDS4 tools and its handlers.
 
     Returns
     -------
@@ -28,12 +31,14 @@ def logger_init():
 
     logging.setLoggerClass(PDS4Logger)
     logger = logging.getLogger('PDS4ToolsLogger')
-    logger.setLevel(_loud)
 
     logging.setLoggerClass(original_class)
 
     # If this is a new logger then initialize its config
     if not logger.handlers:
+
+        # Set default log level for entire logger
+        logger.setLevel(_loud)
 
         # Create the stdout handler. This handler outputs to stdout and to warning and errors message boxes
         # in the viewer and can be silenced by user (via use of quiet or --quiet).
@@ -48,11 +53,38 @@ def logger_init():
         stdout_handler.setFormatter(formatter)
         log_handler.setFormatter(formatter)
 
-        # Add handlers to logger.
+        # Add handlers to logger
         logger.addHandler(stdout_handler)
         logger.addHandler(log_handler)
 
     return logger
+
+
+def set_loglevel(level):
+    """
+    Enables log messages from the PDS4 tools logger to propagate to ancestor loggers based
+    on the log level.
+
+    By default log messages are not propagated. To receive info+ log messages, one would
+    typically ``set_loglevel('info')``, while setting ``pds4_read(..., quiet=True)`` to
+    avoid duplicate information to stdout.
+
+    Parameters
+    ----------
+    level : int or str
+        Level to set for handler. See Python documentation on logger levels for details.
+
+    Returns
+    -------
+    None
+    """
+
+    global _user_level
+
+    if isinstance(level, six.string_types):
+        _user_level = getattr(logging, level.upper())
+    else:
+        _user_level = level
 
 
 class PDS4Logger(logging.Logger, object):
@@ -119,6 +151,7 @@ class PDS4Logger(logging.Logger, object):
         -------
         None
         """
+
         self.get_handler(handler_name).setLevel(_quiet)
 
     def loud(self, handler_name='stdout_handler'):
@@ -127,7 +160,7 @@ class PDS4Logger(logging.Logger, object):
         Parameters
         ----------
         handler_name : str or unicode, optional
-            Handler name to select.  Defaults to stdout handler.
+            Handler name to select. Defaults to stdout handler.
 
         Returns
         -------
@@ -180,7 +213,30 @@ class PDS4Logger(logging.Logger, object):
         for i, handler in enumerate(self.stream_handlers):
             handler.terminator = ends[i]
 
-    def _log(self, *args, **kwargs):
+    def setLevel(self, level, handler_name=None):
+        """ Set log level for entire logger or a specific handler.
+
+        Parameters
+        ----------
+        level : int or str
+            Level to set for logger or handler. See Python documentation on logger levels for details.
+        handler_name : str or unicode, optional
+            Handler name to select. Defaults to the entire logger.
+
+        Returns
+        -------
+        None
+        """
+
+        if isinstance(level, six.string_types):
+            level = level.upper()
+
+        if handler_name is None:
+            super(PDS4Logger, self).setLevel(level)
+        else:
+            self.get_handler(handler_name).setLevel(level)
+
+    def _log(self, level, *args, **kwargs):
         """
         Subclassed to allow *end* and *max_repeat* arguments to every logger log call (e.g. ``logger.info``,
         ``logger.warning``, etc)
@@ -210,15 +266,22 @@ class PDS4Logger(logging.Logger, object):
 
         # Set line terminator (temporarily) for all handlers
         if end is not None:
-            old_ends = [handler.terminator for handler in self.stream_handlers]
+            original_ends = [handler.terminator for handler in self.stream_handlers]
             self.set_terminators(end)
 
-        # Log the message
-        super(PDS4Logger, self)._log(*args, **kwargs)
+        # Enable or disable propagation to ancestor loggers based on ``set_loglevel``
+        original_propagate = self.propagate
+        if (_user_level is None) or (level < _user_level):
+            self.propagate = False
 
-        # Revert line terminator to previous/default setting
+        # Log the message
+        super(PDS4Logger, self)._log(level, *args, **kwargs)
+
+        # Revert log propagation and line terminator back to previous/default settings
+        self.propagate = original_propagate
+
         if end is not None:
-            self.set_terminators(old_ends)
+            self.set_terminators(original_ends)
 
 
 class PDS4StreamHandler(logging.StreamHandler):
@@ -242,7 +305,6 @@ class PDS4StreamHandler(logging.StreamHandler):
             logging.StreamHandler.__init__(self, strm=sys.stdout)
 
         self._name = name
-        self._is_quiet = None
 
         if not hasattr(self, 'terminator'):
             self.terminator = '\n'
@@ -314,7 +376,7 @@ class PDS4StreamHandler(logging.StreamHandler):
         bool
             True if handler is quiet, False otherwise.
         """
-        return self._is_quiet
+        return self.level >= _quiet
 
     def set_level(self, level):
         """ Set handler log level.
@@ -323,7 +385,7 @@ class PDS4StreamHandler(logging.StreamHandler):
 
         Parameters
         ----------
-        level : int
+        level : int or str
             Level to set for handler. See Python documentation on logger levels for details.
         """
         self.setLevel(level)
@@ -336,7 +398,7 @@ class PDS4StreamHandler(logging.StreamHandler):
         Returns
         -------
         int
-            Level for handler. See Python do cumentation on logger levels for details.
+            Level for handler. See Python documentation on logger levels for details.
         """
         return self.level
 
@@ -347,14 +409,12 @@ class PDS4StreamHandler(logging.StreamHandler):
 
         Parameters
         ----------
-        level : int
+        level : int or str
             Level to set for handler. See Python documentation on logger levels for details.
         """
 
-        if level == _quiet:
-            self._is_quiet = True
-        else:
-            self._is_quiet = False
+        if isinstance(level, six.string_types):
+            level = level.upper()
 
         logging.StreamHandler.setLevel(self, level)
 

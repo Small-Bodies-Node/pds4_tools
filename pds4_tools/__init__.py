@@ -5,3 +5,5 @@ from .viewer import pds4_viewer
 
 from .reader import pds4_read as read
 from .viewer import pds4_viewer as view
+
+from .utils.logging import set_loglevel

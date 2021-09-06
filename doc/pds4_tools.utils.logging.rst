@@ -19,9 +19,14 @@ Functions
 .. autosummary::
 
     logger_init
+    set_loglevel
 
 Details
 -------
+
+.. function:: pds4_tools.set_loglevel
+
+    An alias of :func:`set_loglevel`.
 
 .. autoclass:: PDS4Logger
     :members:
@@ -52,3 +57,4 @@ Details
 
 
 .. autofunction:: logger_init
+.. autofunction:: set_loglevel

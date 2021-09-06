@@ -49,8 +49,10 @@ def pds4_read(filename, quiet=False, lazy_load=False, no_scale=False, decode_str
         filename : str or unicode
             The filename, including full or relative path, or a remote
             URL to the PDS4 label describing the data.
-        quiet : bool, optional
-            Suppresses all info/warnings from being output.
+        quiet : bool, int or str, optional
+            If True, suppresses all info/warnings from being output to stdout.
+            Supports log-level style options for more fine grained control.
+            Defaults to False.
         lazy_load : bool, optional
             If True, then the data of each PDS4 data structure will not be
             read-in to memory until the first attempt to access it. Additionally,
@@ -175,8 +177,10 @@ def pds4_read(filename, quiet=False, lazy_load=False, no_scale=False, decode_str
             `Label.to_dict()` and `Label.to_string()` methods.
     """
 
-    # Set logger to only emit error messages if requested
-    if quiet:
+    # Set logger to only emit requested messages to stdout
+    if not isinstance(quiet, bool):
+        logger.setLevel(quiet, 'stdout_handler')
+    elif quiet:
         logger.quiet()
 
     # Set exception hook, which automatically calls logger on every uncaught exception

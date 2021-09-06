@@ -1203,12 +1203,12 @@ def open_summary(viewer, filename=None, from_existing_structures=None, quiet=Fal
     from_existing_structures : StructureList, optional
         An existing StructureList, as returned by pds4_read(), to view. Takes
         precedence if given together with filename.
+    quiet : bool, int or str, optional
+        Suppress all info/warnings from being output and displayed. Supports
+        log-level style options for more fine grained control. Defaults to False.
     lazy_load : bool, optional
         Do not read-in data of each data structure until attempt to view said
         data structure. Defaults to True.
-    quiet : bool, optional
-        Suppresses all info/warnings from being output and displayed.
-        Defaults to False.
 
     Returns
     -------
