@@ -202,7 +202,7 @@ class FigureCanvas(object):
         self.tk_widget.config(width=fig_size[0], height=fig_size[1])
 
         # Set MPL Figure size, which also redraws the figure
-        self.mpl_canvas.resize(ResizeEvent(fig_size[0], fig_size[1]))
+        MPLCompat.canvas_resize(self.mpl_canvas, ResizeEvent(fig_size[0], fig_size[1]))
 
         # Reset thawed size to none (otherwise this will keep firing even when no resize needed)
         self._thawed_fig_size = None
@@ -279,13 +279,30 @@ class MPLCompat(object):
 
         return MatplotlibDeprecationWarning
 
+    @staticmethod
+    def _mpl_version():
+        version_split = mpl.__version__.split('.')
+        return [int(v) for v in version_split]
+
     NavigationToolbar2Tk = _get_navigation_toolbar.__get__(object)()
     DeprecationWarning = _get_deprecation_warning.__get__(object)()
     PowerNorm = _get_power_norm.__get__(object)()
 
     @staticmethod
+    def canvas_resize(canvas, resize_event):
+
+        # Resize an MPL figure
+        canvas.resize(resize_event)
+
+        # Force-refresh the image. Older MPL versions (prior to MPL v3.4.0) had a draw call in resize
+        # that new versions removed. Resizing results in a blinking image without such a draw call.
+        mpl_version = MPLCompat._mpl_version()
+        if mpl_version[0] > 3 or (mpl_version[0] == 3 and mpl_version[1] >= 4):
+            canvas.draw()
+
+    @staticmethod
     def axis_set_facecolor(axis, color):
-        """ Allow safe use of Axes.set_facecolor and  (available in MPL v1.5.x) """
+        """ Allow safe use of Axes.set_facecolor (available in MPL v1.5.x) """
 
         try:
             axis.set_facecolor(color)
