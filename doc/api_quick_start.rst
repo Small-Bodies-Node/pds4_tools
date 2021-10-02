@@ -85,6 +85,8 @@ versions. We recommend developers look at both ``Label`` and ``ElementTree``
 documentation for additional details of how ``Label`` can be used. ``Label``
 also allows easy extraction of the ElementTree object that underlies it if desired.
 
+Developers interested in log handling should see `pds4_tools.set_loglevel`.
+
 We recommend you look at the API of the above linked classes, as well as at the
 :ref:`User Manual <user_manual>` for pds4_tools for additional explanations and
 usage examples, which should answer most questions that likely came up
