@@ -273,7 +273,7 @@ class StructureList(collections_abc.Sequence):
 class Structure(object):
     """ Stores a single PDS4 data structure.
 
-        Subclassed by `TableStructure` and `ArrayStructure`.
+        Subclassed by `ArrayStructure`, `TableStructure` and `HeaderStructure`.
 
         Parameters
         ----------
