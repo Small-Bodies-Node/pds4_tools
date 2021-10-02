@@ -81,11 +81,11 @@ def pds4_read(filename, quiet=False, lazy_load=False, no_scale=False, decode_str
         An outline of the label, including the array and a table with 3
         fields, is given.
 
-        # Local file
+        >>> # Local file
         >>> struct_list = pds4_tools.read('/path/to/Example_Label.xml')
 
-        # Remote URL
-        >>> struct_list = pds4_tools.read('http://url.com/Example_Label.xml')
+        >>> # Remote URL
+        >>> struct_list = pds4_tools.read('https://url.com/Example_Label.xml')
 
         Example Label Outline::
 
@@ -131,14 +131,14 @@ def pds4_read(filename, quiet=False, lazy_load=False, no_scale=False, decode_str
             you can use the data attribute for a PDS4 Array data structure, or
             list-like and the field() method to access a field for a table.
 
-            PDS4 Arrays:
+            >>> # PDS4 Arrays
             >>> unnamed_array.data
 
-            PDS4 Table fields:
+            >>> # PDS4 Table fields
             >>> obs_table['wavelength']
             >>> obs_table.field('wavelength')
 
-            PDS4 Table records:
+            >>> # PDS4 Table records
             >>> obs_table[0:1000]
 
         Accessing Example Label meta data:
