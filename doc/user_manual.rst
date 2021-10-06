@@ -21,7 +21,7 @@ provide access to PDS4 data.
 
 Installation instructions are currently provided at:
 
-http://sbndev.astro.umd.edu/wiki/Python_PDS4_Tools#Installation
+https://sbnwiki.astro.umd.edu/wiki/Python_PDS4_Tools#Installation
 
 
 1.3  Quick Tutorial
