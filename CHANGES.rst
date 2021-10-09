@@ -1,8 +1,13 @@
-[1.3] - TBD
-===========
+[1.3] - 2021-10-10
+==================
 
 Reader
 ------
+
+**Added**
+
+- Quiet keyword in `pds4_tools.read` will also accept log-level style values
+- Added `pds4_tools.set_loglevel` function to control logging
 
 **Changed**
 
@@ -12,13 +17,26 @@ Reader
   of 0 instead of NumPy default
 - Deprecated mask_numeric_nulls keyword in `data_type_convert_table_ascii`,
   use mask_nulls instead
-- Propagation to ancestor loggers is now controlled by `pds4_tools.set_loglevel`,
-  off by default
+- Propagation to ancestor loggers is off by default, see `pds4_tools.set_loglevel`
 
 **Fixed**
 
-- `PDSdtype` not-equal operator will correctly work under Python2
-- Table_Delimited crashes on empty values in ASCII_Boolean fields
+- Table_Delimited read-in when ASCII_Boolean fields have empty values
+- `PDSdtype` not-equal operator under Python2
+- Default logger class will no longer be overwritten globally
+- Deprecation warnings for cbook in matplotlib 3.4+
+- Deprecation warnings for aliases of built-in types under NumPy 1.20+
+
+Viewer
+------
+
+**Added**
+
+- Quiet keyword in ``pds4_tools.view`` will also accept log-level style values
+
+**Fixed**
+
+- Remove refresh-blinking on resize of image or plot with matplotlib 3.4+
 
 
 [1.2] - 2020-10-04
