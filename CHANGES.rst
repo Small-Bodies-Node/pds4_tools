@@ -1,3 +1,9 @@
+[1.4] - TBD
+===========
+
+...
+
+
 [1.3] - 2021-10-10
 ==================
 
@@ -24,7 +30,6 @@ Reader
 - Table_Delimited read-in when ASCII_Boolean fields have empty values
 - `PDSdtype` not-equal operator under Python2
 - Default logger class will no longer be overwritten globally
-- Deprecation warnings for cbook in matplotlib 3.4+
 - Deprecation warnings for aliases of built-in types under NumPy 1.20+
 
 Viewer
@@ -37,6 +42,7 @@ Viewer
 **Fixed**
 
 - Remove refresh-blinking on resize of image or plot with matplotlib 3.4+
+- Deprecation warnings for cbook in matplotlib 3.4+
 
 
 [1.2] - 2020-10-04
