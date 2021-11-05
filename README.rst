@@ -1,14 +1,18 @@
-.. image:: https://img.shields.io/travis/Small-Bodies-Node/pds4_tools/master.svg?label=Travis%20CI
-    :target: https://travis-ci.com/Small-Bodies-Node/pds4_tools
+.. image:: https://img.shields.io/github/workflow/status/Small-Bodies-Node/pds4_tools/Tests,%20Docs,%20Deploy/master?label=Github%20Actions
+    :target: https://github.com/Small-Bodies-Node/pds4_tools/actions/workflows/all.yml
+    :alt: PDS4 Tools GitHub Actions CI Status
 
 .. image:: https://img.shields.io/appveyor/ci/LevN0/pds4-tools/master.svg?label=AppVeyor
     :target: https://ci.appveyor.com/project/LevN0/pds4-tools
+    :alt: PDS4 Tools AppVeyor CI Status
 
 .. image:: https://img.shields.io/pypi/l/pds4_tools.svg?colorB=98C611
-    :target: https://pypi.python.org/pypi/pds4_tools
+    :target: https://raw.githubusercontent.com/Small-Bodies-Node/pds4_tools/master/LICENSES
+    :alt: PDS4 Tools License
 
 .. image:: https://img.shields.io/pypi/v/pds4_tools.svg?label=PyPi%20Package
     :target: https://pypi.python.org/pypi/pds4_tools
+    :alt: PDS4 Tools PyPi Version
 
 |
 
