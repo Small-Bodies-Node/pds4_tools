@@ -1,0 +1,275 @@
+name: Tests, Docs, Deploy
+
+on:
+  - push
+  - pull_request
+
+permissions:
+  contents: read
+
+jobs:
+
+  # Test Code for recent Python releases
+  test-code:
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [2.7, 3.5, 3.6, 3.7, 3.8, 3.9]
+    steps:
+
+    - name: Checkout repo
+      uses: actions/checkout@v2
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        pip install tox
+        pip install tox-gh-actions
+
+    - name: Test Code
+      run: tox
+
+
+  # Test Code for older Python3 releases
+  test-code-older-py3:
+    runs-on: ubuntu-18.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.3.7, 3.4.10]
+    steps:
+
+    - name: Checkout repo
+      uses: actions/checkout@v2
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      shell: bash
+      run: |
+        if [[ ${{ matrix.python-version }} == 3.3* ]]; then
+          pip install virtualenv==15.2.0
+          pip install pluggy==0.5.2
+          pip install tox==2.9.1
+        fi
+        pip install tox
+
+    - name: Test Code
+      shell: bash
+      run: |
+        version_abbr=$( echo ${{ matrix.python-version }} | sed -r 's/^([0-9])\.([0-9]).*/\1\2/' )
+        envs=$( tox -listenvs | grep "py$version_abbr-" | tr '\n' ',' )
+        tox -e $envs
+
+
+  # Test Code for Python26
+  test-code-older-py26:
+    runs-on: ubuntu-20.04
+    container: ubuntu:trusty
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [2.6]
+    steps:
+
+    - name: Checkout repo
+      uses: actions/checkout@v2
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y software-properties-common build-essential libssl-dev tk wget
+        wget https://storage.googleapis.com/travis-ci-language-archives/python/binaries/ubuntu/14.04/x86_64/python-2.6.tar.bz2
+        sudo tar -xjf python-2.6.tar.bz2 --directory /
+        echo "VIRTUAL_ENV=/home/travis/virtualenv/python2.6" >> $GITHUB_ENV
+
+    - name: Install dependencies
+      run: |
+        PYPI_URL=https://files.pythonhosted.org/packages/source
+        wget $PYPI_URL/p/pyOpenSSL/pyOpenSSL-0.13.tar.gz
+        wget $PYPI_URL/p/pyasn1/pyasn1-0.1.9.tar.gz
+        wget $PYPI_URL/n/ndg_httpsclient/ndg_httpsclient-0.4.0.tar.gz
+        . $VIRTUAL_ENV/bin/activate
+        pip install pyOpenSSL-0.13.tar.gz
+        pip install pyasn1-0.1.9.tar.gz
+        pip install ndg_httpsclient-0.4.0.tar.gz
+        sed -i '53,57s/..//' $VIRTUAL_ENV/lib/python2.6/site-packages/pip/_vendor/requests/__init__.py
+        pip install virtualenv==14.0.5
+        pip install tox
+
+    - name: Test Code
+      run: |
+        locale-gen en_US.UTF-8
+        export LC_ALL=en_US.UTF-8
+        export LANG=en_US.UTF-8
+        . $VIRTUAL_ENV/bin/activate
+        export PYTHONUSERBASE="$VIRTUAL_ENV"
+        version_abbr=$( echo ${{ matrix.python-version }} | sed -r 's/^([0-9])\.([0-9]).*/\1\2/' )
+        envs=$( tox -listenvs | grep "py$version_abbr-" | tr '\n' ',' )
+        tox -e $envs
+
+
+  # Test Docs
+  test-docs:
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+    steps:
+
+    - name: Checkout repo
+      uses: actions/checkout@v2
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+
+    - name: Install dependencies
+      run: |
+        pip install numpy
+        pip install sphinx
+        pip install numpydoc
+
+    - name: Test Docs
+      run: sphinx-build -W --keep-going doc _build/html
+
+
+  # Save Artifacts
+  create-save-artifacts:
+    runs-on: ubuntu-20.04
+    needs: [test-code, test-code-older-py3, test-code-older-py26, test-docs]
+    permissions:
+      contents: write
+
+    steps:
+
+    - name: Checkout repo
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+
+    - name: Install dependencies
+      run: |
+        pip install wheel
+        pip install numpy
+        pip install sphinx
+        pip install numpydoc
+
+    - name: Create artifacts
+      run: |
+        python setup.py sdist --formats=zip
+        python setup.py bdist_wheel
+
+        VERSION=$(python setup.py --version)
+        sphinx-build -W --keep-going doc _build/html
+        tar -C _build/html -zcf dist/docs-${VERSION}.tar.gz .
+
+    - name: Save artifacts to Github Actions
+      uses: actions/upload-artifact@v2
+      with:
+        name: docs, source zip, wheel
+        path: dist/*
+        if-no-files-found: error
+
+    - name: Deploy artifacts to GitHub Pages
+      shell: bash
+      run: |
+        SHORT_COMMIT=$(git rev-parse --short HEAD)
+
+        shopt -s extglob dotglob
+        rm -rf !(dist|.git|.|..)
+
+        cp dist/* .
+
+        git config --global user.name "$(git --no-pager log --format=format:'%an' -n 1)"
+        git config --global user.email "$(git --no-pager log --format=format:'%ae' -n 1)"
+
+        git checkout -b gh-pages
+        git update-ref -d HEAD
+        git add --all
+        git commit -m "Artifacts for $SHORT_COMMIT"
+
+        git config push.default simple
+        git push origin gh-pages --force
+
+      if: github.event_name == 'push' &&
+         (github.ref == 'refs/heads/master'|| startsWith(github.ref, 'refs/tags') )
+
+
+  # Deploy to GitHub Releases
+  deploy-github-releases:
+    runs-on: ubuntu-20.04
+    needs: [create-save-artifacts]
+    if: success() && github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+
+    steps:
+
+    - name: Checkout repo
+      uses: actions/checkout@v2
+
+    - name: Deploy to GitHub Releases
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_RELEASES_TOKEN }}
+      run: |
+        VERSION=$(python setup.py --version)
+
+        cat > release-notes.md <<EOL
+        Version $VERSION of PDS4 Python Tools and PDS4 Viewer.
+        EOL
+
+        extra_flags=''
+        if [[ "$VERSION" == *"dev"* ]]; then
+          extra_flags='--draft'
+        fi
+
+        gh release create v$VERSION --notes-file release-notes.md $extra_flags
+
+
+  # Deploy to PyPi
+  deploy-pypi:
+    runs-on: ubuntu-20.04
+    needs: [create-save-artifacts]
+    if: success() && github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+
+    steps:
+
+    - name: Checkout repo
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+
+    - name: Install dependencies
+      run: |
+        pip install wheel
+
+    - name: Create artifacts
+      run: |
+        python setup.py sdist --formats=zip
+        python setup.py bdist_wheel
+
+    - name: Publish to Test PyPI
+      uses: pypa/gh-action-pypi-publish@v1.4.2
+      with:
+        password: ${{ secrets.TEST_PYPI_TOKEN }}
+        repository_url: https://test.pypi.org/legacy/
+
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@v1.4.2
+      with:
+        password: ${{ secrets.PYPI_TOKEN }}
+      if: contains(github.ref, 'dev') == false
