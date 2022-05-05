@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 
 import sys
 import pytest
+import warnings
 import numpy as np
 
 from . import PDS4ToolsTestCase
@@ -1405,11 +1406,12 @@ class TestDeprecation(PDS4ToolsTestCase):
             assert val == 3
 
         # Test for lack of spurious warnings
-        with pytest.warns(None) as record:
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+
             obj = TestClass(0, arg2=2, arg3=False)
             obj = TestClass(0, arg3=False)
             test_function(1, 2)
-        assert not record
 
     def test_delete_parameter(self):
 
@@ -1440,11 +1442,12 @@ class TestDeprecation(PDS4ToolsTestCase):
                 assert val == 3
 
         # Test for lack of spurious warnings
-        with pytest.warns(None) as record:
+        with warnings.catch_warnings():
+            warnings.simplefilter('error')
+
             obj = TestClass(0)
             obj = TestClass(0, arg3=True)
-        assert not record
-    
+
     def test_deprecated_docstring(self):
         
         @deprecated('0.0')
