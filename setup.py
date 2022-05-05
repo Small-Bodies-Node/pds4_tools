@@ -18,6 +18,16 @@ def read(filename, full_path=False):
     return data
 
 
+def get_docs_url():
+
+    base_url = 'https://pdssbn.astro.umd.edu/tools/pds4_tools_docs/'
+
+    if 'dev' in about['__version__']:
+        return base_url + 'current/'
+    else:
+        return base_url + about['__version__'] + '/'
+
+
 setup(
     name='pds4_tools',
     version=about['__version__'],
@@ -31,6 +41,12 @@ setup(
     url='https://sbnwiki.astro.umd.edu/wiki/Python_PDS4_Tools',
     license='BSD',
     keywords=['pds4_viewer', 'pds4', 'pds'],
+
+    project_urls={
+        'Documentation': get_docs_url(),
+        'Source Code': 'https://github.com/Small-Bodies-Node/pds4_tools',
+        'Bug Tracker': 'https://github.com/Small-Bodies-Node/pds4_tools/issues',
+    },
 
     classifiers=[
         'Development Status :: 5 - Production/Stable',
