@@ -11,18 +11,19 @@ import numpy as np
 
 from . import PDS4ToolsTestCase
 
-from ..reader.core import pds4_read
-from ..reader.data import PDS_ndarray, PDS_marray
-from ..reader.data_types import data_type_convert_dates
-from ..reader.array_objects import ArrayStructure
-from ..reader.table_objects import TableStructure, TableManifest
-from ..reader.label_objects import Label
+from pds4_tools import pds4_read
+from pds4_tools.reader.data import PDS_ndarray, PDS_marray
+from pds4_tools.reader.data_types import data_type_convert_dates
+from pds4_tools.reader.array_objects import ArrayStructure
+from pds4_tools.reader.table_objects import TableStructure, TableManifest
+from pds4_tools.reader.label_objects import Label
 
-from ..utils import compat
-from ..utils.compat import OrderedDict
-from ..utils.deprecation import PDS4ToolsDeprecationWarning, deprecated, rename_parameter, delete_parameter
+from pds4_tools.utils import compat
+from pds4_tools.utils.compat import OrderedDict
+from pds4_tools.utils.deprecation import (PDS4ToolsDeprecationWarning, deprecated,
+                                          rename_parameter, delete_parameter)
 
-from ..extern import six
+from pds4_tools.extern import six
 
 
 class TestStructureList(PDS4ToolsTestCase):
