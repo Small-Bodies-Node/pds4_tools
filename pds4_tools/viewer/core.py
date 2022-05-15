@@ -23,11 +23,9 @@ from ..extern.six.moves.tkinter import (Tk, Toplevel, PhotoImage, Menu, Scrollba
                                         Entry, Text, Button, Checkbutton, BooleanVar, StringVar, TclError)
 
 # NOTE: DO NOT IMPORT MATPLOTLIB HERE, or import any other module
-# that in-turn imports MPL or any module that imports anything that
-# should not be imported when the Viewer is not actually used. See
-# note in ``_mpl_commands`` below for explanation. This module is
-# imported by `pds4_tools.__init__``, as is any module this module
-# in-turn imports.
+# that in-turn imports MPL. See  note in ``_mpl_commands`` below
+# for explanation. This module is imported by `pds4_tools.__init__``,
+# as is any module this module in-turn imports.
 
 # Initialize the logger
 logger = logger_init()
@@ -1096,12 +1094,6 @@ def _set_icon(tk_widget, icon_name='logo'):
 # user imports anything from the package. Therefore, whenever needed, we use this function to import
 # and call the functions we otherwise would have imported at the top.
 def _mpl_commands(function_name, *args, **kwargs):
-
-    # Check if MPL is available
-    try:
-        import matplotlib as mpl
-    except ImportError:
-        return
 
     # Safe import of required MPL code
     from . import mpl as mpl_module

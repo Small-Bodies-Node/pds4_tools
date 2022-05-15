@@ -87,7 +87,7 @@ setup(
     ],
 
     extras_require={
-        'viewer': ['matplotlib', 'Tkinter'],
+        'viewer': ['matplotlib'],  # tkinter
         'tests': ['pytest'],
     }
 )
