@@ -1,6 +1,7 @@
 # This module contains classes and methods that require
 # matplotlib, but are used across more than one viewer
 # window or do not better fit elsewhere
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -18,16 +19,20 @@ from ..extern.six.moves import reload_module
 # Initialize TK backend for MPL safely prior to importing from backend
 if mpl.get_backend() != 'TkAgg':
 
+    # MPL v1.2 - v3.2
     try:
         mpl.use('TkAgg', warn=False, force=True)
-
-    # Older MPL versions do not have the warn and force parameters
     except TypeError:
-        mpl.use('TkAgg')
-        if 'matplotlib.backends' in sys.modules:
-            reload_module(sys.modules['matplotlib.backends'])
-else:
-    mpl.use('TkAgg')
+
+        # MPL v3.3+
+        try:
+            mpl.use('TkAgg', force=True)
+
+        # MPL v1.1-
+        except TypeError:
+            mpl.use('TkAgg', warn=False)
+            if 'matplotlib.backends' in sys.modules:
+                reload_module(sys.modules['matplotlib.backends'])
 
 # After initializing TK as backend, import MPL
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
