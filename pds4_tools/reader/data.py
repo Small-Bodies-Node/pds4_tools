@@ -663,7 +663,7 @@ class PDS_marray(np.ma.MaskedArray, PDS_ndarray):
 
         if isinstance(data, np.ma.MaskedArray):
             # NumPy does not properly set fill value in record arrays for multi-dimensional fields
-            if isinstance(self.fill_value[name], np.ndarray):
+            if isinstance(self.fill_value[name], np.ndarray) and self.fill_value[name].ndim > 0:
                 self.fill_value[name][:] = data.fill_value
             else:
                 self[name].set_fill_value(data.fill_value)
