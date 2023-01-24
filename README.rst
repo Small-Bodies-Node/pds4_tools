@@ -1,4 +1,4 @@
-.. image:: https://img.shields.io/github/workflow/status/Small-Bodies-Node/pds4_tools/Tests,%20Docs,%20Deploy/master?label=Github%20Actions
+.. image:: https://img.shields.io/github/actions/workflow/status/Small-Bodies-Node/pds4_tools/all.yml?branch=master&label=Github%20Actions
     :target: https://github.com/Small-Bodies-Node/pds4_tools/actions/workflows/all.yml
     :alt: PDS4 Tools GitHub Actions CI Status
 
