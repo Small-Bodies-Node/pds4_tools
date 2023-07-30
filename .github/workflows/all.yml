@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['2.7', '3.5', '3.6', '3.7', '3.8', '3.9', '3.10']
+        python-version: ['3.5', '3.6', '3.7', '3.8', '3.9', '3.10']
     steps:
 
     - name: Checkout repo
@@ -37,7 +37,9 @@ jobs:
 
   # Test Code for older Python3 releases
   test-code-older-py3:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
+    container:
+      image: python:${{ matrix.python-version }}
     strategy:
       fail-fast: false
       matrix:
@@ -46,11 +48,6 @@ jobs:
 
     - name: Checkout repo
       uses: actions/checkout@v3
-
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
 
     - name: Install dependencies
       shell: bash
@@ -70,10 +67,34 @@ jobs:
         tox -e $envs
 
 
+  # Test Code for Python27
+  test-code-older-py27:
+    runs-on: ubuntu-20.04
+    container:
+      image: python:${{ matrix.python-version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['2.7.18']
+    steps:
+
+    - name: Checkout repo
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: |
+        pip install tox
+        pip install tox-gh-actions==2.8.1
+
+    - name: Test Code
+      run: tox
+
+
   # Test Code for Python26
   test-code-older-py26:
     runs-on: ubuntu-20.04
-    container: ubuntu:trusty
+    container:
+      image: ubuntu:trusty
     strategy:
       fail-fast: false
       matrix:
