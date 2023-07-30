@@ -554,8 +554,9 @@ class ImageViewWindow(DataViewWindow):
         cmap = self.menu_option('colormap')
         axes = settings['axes']
 
-        # Skip any action if there are only two axes (horizontal and vertical), or in RGB colormap mode
-        if (len(axes) == 2) or (cmap == 'RGB'):
+        # Skip any action if there are only two axes (horizontal and vertical), or if
+        # there are only three axes in RGB colormap mode
+        if len(axes) == 2 or (len(axes) == 3 and cmap == 'RGB'):
             return
 
         # Select currently selected axis by default
