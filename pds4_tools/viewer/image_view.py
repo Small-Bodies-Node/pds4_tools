@@ -520,7 +520,8 @@ class ImageViewWindow(DataViewWindow):
 
                 if seq_number == sequence:
                     type_ = type
-                    slice_ = slice(None)
+                    if type != 'time':
+                        slice_ = slice(None)
 
             axes.add_axis(name, type_, sequence, slice_, length)
 
