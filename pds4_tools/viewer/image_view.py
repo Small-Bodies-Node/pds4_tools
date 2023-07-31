@@ -194,6 +194,9 @@ class ImageViewWindow(DataViewWindow):
             # Set colormap to RGB by default
             self.set_colormap('RGB')
 
+        # Set the default selected axis and slice
+        self.select_slice()
+
         # Draw the slice/image on the screen
         self._draw_slice()
 
@@ -541,14 +544,16 @@ class ImageViewWindow(DataViewWindow):
         if self._data_open:
             self._draw_slice()
 
-    # Selects a new slice to display and updates the currently displayed slice/image. To adjust the shown
-    # slice for a 3D image, having axes (x, y, z), you need to specify both which axis (for example x, which
-    # could correspond to time) and which slice of x (for example 2) you want to display. The axis variable
-    # is an integer specifying the sequence_number of the Axis_Array, in other words it specifies for which
-    # axis the index variable is used; None defaults to the currently selected axis. The index variable is
-    # either an integer specifying which slice will be shown for the axis, or the string 'next' or 'previous';
-    # None defaults to the currently selected slice
-    def select_slice(self, axis=None, index=None):
+    # Selects a new slice to display and updates the currently displayed slice/image. To adjust the
+    # shown slice for a 3D image, having axes (x, y, z), you need to specify both which axis (for
+    # example x, which could correspond to time) and which slice of x (for example 2) you want to
+    # display. The axis variable is an integer specifying the sequence_number of the Axis_Array,
+    # in other words it specifies for which axis the index variable is used; None defaults to the
+    # currently selected axis. The index variable is either an integer specifying which slice will
+    # be shown for the axis, or the string 'next' or 'previous'; None defaults to the currently
+    # selected slice. When save_index is True, the selected axis will be updated to default to
+    # the specified axis.
+    def select_slice(self, axis=None, index=None, save_axis=True):
 
         settings = self._settings
         cmap = self.menu_option('colormap')
@@ -559,9 +564,17 @@ class ImageViewWindow(DataViewWindow):
         if len(axes) == 2 or (len(axes) == 3 and cmap == 'RGB'):
             return
 
-        # Select currently selected axis by default
+        # Deafault to a valid selected axis
         if axis is None:
-            axis = axes[settings['selected_axis']]['sequence_number']
+
+            # Try the currently selected axis
+            axis = settings['selected_axis']
+
+            # Try the first extra axis if currently selected axis is invalid
+            if axes.find('sequence_number', axis) is None:
+                excluded_axes = ('color', 'vertical', 'horizontal')
+                axis = next((axis['sequence_number']
+                             for axis in axes if axis['type'] not in excluded_axes), 0)
 
         # Raise error if axis sequence_number does not exist
         axis_properties = axes.find('sequence_number', axis)
@@ -603,13 +616,14 @@ class ImageViewWindow(DataViewWindow):
             new_slice = index
 
         # Save new selected axis
-        axis_index = axes.find_index('sequence_number', axis)
-        self._settings['selected_axis'] = axis_index
+        if save_axis:
+            self._settings['selected_axis'] = axis_properties['sequence_number']
 
         # Display a new slice if needed (changing only the selected axis, while keeping the slice index
         # the same, does not require a re-display of the data since it does not change)
         if new_slice != previous_slice:
 
+            axis_index = axes.find_index('sequence_number', axis)
             axes.set(axis_index, 'slice', new_slice)
             self._header_widgets['frame'].set(new_slice)
 
@@ -2476,7 +2490,7 @@ class DataCubeWindow(Window):
         else:
 
             excluded_axes = ('color', 'vertical', 'horizontal')
-            slider_axes = [axes[i] for i in range(0, num_axes) if axes[i]['type'] not in excluded_axes]
+            slider_axes = [axis for axis in axes if axis['type'] not in excluded_axes]
 
             # Determine if we need selectors for axes (necessary for cases when there are multiple sliders)
             add_selectors = False
@@ -2512,7 +2526,7 @@ class DataCubeWindow(Window):
 
             # Add selection for the axis
             if add_selectors:
-                radiobutton = Radiobutton(slider_row_box, variable=self._selected_axis, value=slider_index)
+                radiobutton = Radiobutton(slider_row_box, variable=self._selected_axis, value=axis_sequence)
                 radiobutton.grid(row=slider_index+1, column=0)
 
             # Add minimum, maximum and slider to control selected slice index
@@ -2535,7 +2549,7 @@ class DataCubeWindow(Window):
     def _slider_moved(self, slider_index, axis_sequence):
 
         index = self._sliders[slider_index].get()
-        self._structure_window.select_slice(axis=axis_sequence, index=index)
+        self._structure_window.select_slice(axis=axis_sequence, index=index, save_axis=False)
 
     def close(self):
 
@@ -2953,10 +2967,7 @@ class _AxesProperties(object):
         self.axes_properties = []
 
     def __getitem__(self, index):
-
-        items = self.axes_properties[index]
-
-        return items
+        return self.axes_properties[index]
 
     def __len__(self):
         return len(self.axes_properties)
