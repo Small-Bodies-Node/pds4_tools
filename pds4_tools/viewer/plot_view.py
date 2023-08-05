@@ -1704,7 +1704,7 @@ class PlotViewWindow(DataViewWindow):
         if show_major_grid:
             ax.grid(which='major', linestyle=grid_linestyle, linewidth=1)
         else:
-            ax.grid(which='major', b=False)
+            MPLCompat.axis_set_grid(ax, which='major', visible=False)
 
         # Set minor grid line settings
         if show_minor_grid:
@@ -1717,7 +1717,7 @@ class PlotViewWindow(DataViewWindow):
                 ax.grid(which='major', linestyle=grid_linestyle, linewidth=0.5)
 
         else:
-            ax.grid(which='minor', b=False)
+            MPLCompat.axis_set_grid(ax, which='minor', visible=False)
 
         self._figure_canvas.draw()
 

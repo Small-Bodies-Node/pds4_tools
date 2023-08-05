@@ -314,6 +314,21 @@ class MPLCompat(object):
         except AttributeError:
             axis.set_axis_bgcolor(color)
 
+    @staticmethod
+    def axis_set_grid(axis, **kwargs):
+        """ Allow safe use of Axes.grid(visible=bool) (available in MPL v3.5.x) """
+
+        if 'b' in kwargs:
+            raise ValueError('Use *visible* instead of *b*.')
+
+        kwargs['b'] = kwargs.pop('visible', None)
+
+        try:
+            axis.grid(**kwargs)
+        except ValueError:
+            kwargs['visible'] = kwargs.pop('b', None)
+            axis.grid(**kwargs)
+
 
 def get_mpl_linestyles(inverse=None, include_none=True):
     """ Obtain MPL's line styles.
