@@ -7,6 +7,7 @@ import datetime as dt
 
 import numpy as np
 
+from ..utils.compat import np_unicode
 from ..utils.deprecation import rename_parameter
 from ..utils.logging import logger_init
 
@@ -135,7 +136,7 @@ def pds_to_numpy_type(data_type=None, data=None, field_length=None, decode_strin
         # Get dtype for character data (from data)
         if is_character_data:
             unicode_requested = decode_strings and not is_bitstring_data
-            dtype = 'U' if (np.issubdtype(data.dtype, np.unicode_) or unicode_requested) else 'S'
+            dtype = 'U' if (np.issubdtype(data.dtype, np_unicode) or unicode_requested) else 'S'
 
             if field_length is not None:
                 dtype += str(field_length)
@@ -248,7 +249,7 @@ def pds_to_builtin_type(data_type=None, data=None, decode_strings=False, decode_
 
         if is_character_data:
             unicode_requested = decode_strings and not is_bitstring_data
-            _type = six.text_type if (np.issubdtype(data.dtype, np.unicode_) or unicode_requested
+            _type = six.text_type if (np.issubdtype(data.dtype, np_unicode) or unicode_requested
                                       ) else six.binary_type
         else:
             _type = type(np.asscalar(data[0]))
@@ -311,7 +312,7 @@ def numpy_to_pds_type(dtype, ascii_numerics=False):
     """
 
     # For string dtypes
-    if np.issubdtype(dtype, np.unicode_):
+    if np.issubdtype(dtype, np_unicode):
         data_type = 'UTF8_String'
 
     elif np.issubdtype(dtype, np.string_):
@@ -460,6 +461,8 @@ def data_type_convert_table_ascii(data_type, data, mask_nulls=False, decode_stri
         data[mask_array] = six.ensure_binary(str(fill_value))
 
     # Special handling for boolean due to e.g. bool('false') = True
+    # and that in NumPy 2.0+ string arrays typecast to bool set
+    # all non-empty strings as True.
     if data_type == 'ASCII_Boolean':
 
         # Replace 'true' and 'false' with 1 and 0
@@ -469,9 +472,10 @@ def data_type_convert_table_ascii(data_type, data, mask_nulls=False, decode_stri
         data = data.split(b'@')
 
         try:
-            data = np.asarray(data).astype(dtype, copy=False)
+            data = np.asarray(data).astype(np.uint8, copy=False) \
+                                   .astype(dtype, copy=False)
         except TypeError:
-            data = np.asarray(data).astype(dtype)
+            data = np.asarray(data).astype(np.uint8).astype(dtype)
 
     # Convert ASCII numerics into their proper data type
     elif not np.issubdtype(dtype, np.character):
@@ -770,11 +774,23 @@ def apply_scaling_and_value_offset(data, scaling_factor=None, value_offset=None,
     data = adjust_array_data_type(data, scaling_factor, value_offset)
 
     # Apply scaling factor and value offset
+    # (workaround inability of NumPy 2.0+ to add / multiply in cases where
+    #  value on right of operand is out-of-bounds of dtype, see PR #99)
     if not no_scaling:
-        data *= scaling_factor
+
+        scale_dtype = None
+        if isinstance(scaling_factor, six.integer_types):
+            scale_dtype = get_min_integer_numpy_type([scaling_factor])
+
+        data *= np.array(scaling_factor, dtype=scale_dtype)
 
     if not no_offset:
-        data += value_offset
+
+        offset_dtype = None
+        if isinstance(value_offset, six.integer_types):
+            offset_dtype = get_min_integer_numpy_type([value_offset])
+
+        data += np.array(value_offset, dtype=offset_dtype)
 
     # Restore the original mask if necessary, removing any additional mask applied above for Special_Constants
     if (special_constants is not None) and (mask is not None):
