@@ -8,7 +8,7 @@ import numpy as np
 
 from .data_types import pds_to_numpy_name
 
-from ..utils.compat import OrderedDict
+from ..utils.compat import OrderedDict, np_issubclass
 from ..extern import six
 
 
@@ -537,7 +537,7 @@ class PDS_marray(np.ma.MaskedArray, PDS_ndarray):
             obj = super(PDS_marray, self).view(dtype=dtype, type=type, fill_value=fill_value)
 
             # Fix bug in NumPy < v1.10, which resets fill value on ``view`` if mask is not nomask
-            if ((dtype is None) or ((type is None) and np.issubclass_(dtype, np.ma.MaskedArray))) and \
+            if ((dtype is None) or ((type is None) and np_issubclass(dtype, np.ma.MaskedArray))) and \
                 (fill_value is None):
 
                 obj._fill_value = self._fill_value
