@@ -682,7 +682,8 @@ def new_table(fields, no_scale=False, decode_strings=False, masked=None, copy=Tr
             data_kwargs = {'data': field}
 
         scale_kwargs = {} if no_scale else {'scaling_factor': meta_field.get('scaling_factor'),
-                                            'value_offset': meta_field.get('value_offset')}
+                                            'value_offset': meta_field.get('value_offset'),
+                                            'include_unscaled': False}
 
         # Obtain dtype (ensuring to scale it for future application of scaling and offset if necessary)
         dtype = pds_to_numpy_type(meta_field.data_type(),
