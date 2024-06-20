@@ -66,7 +66,7 @@ PDS4_DATE_TYPES = {
 
 
 def pds_to_numpy_type(data_type=None, data=None, field_length=None, decode_strings=False, decode_dates=False,
-                      scaling_factor=None, value_offset=None, include_endian=True):
+                      scaling_factor=None, value_offset=None, include_endian=True, include_unscaled=False):
     """ Obtain a NumPy dtype for PDS4 data.
 
     Either *data* or *data_type* must be provided.
@@ -110,6 +110,10 @@ def pds_to_numpy_type(data_type=None, data=None, field_length=None, decode_strin
         If True, the returned dtype will contain an explicit endianness as specified by the PDS4 data type.
         If False, the dtype will not specifically indicate the endianness, typically implying same endianness
         as the current machine. Defaults to True.
+    include_unscaled : bool, optional
+        If True, and when combined with *data*, *scaling_factor* and/or *value_offset*, the returned dtype
+        will not only be large enough to store the scaled data but also large enough to store the unscaled
+        *data*. Defaults to False.
 
     Returns
     -------
@@ -175,13 +179,17 @@ def pds_to_numpy_type(data_type=None, data=None, field_length=None, decode_strin
     # Get scaled data type for numeric data (if necessary)
     if (not is_character_data) and (not is_datetime_data):
 
-        kwargs = {'scaling_factor': scaling_factor, 'value_offset': value_offset}
+        kwargs = {
+            'scaling_factor': scaling_factor,
+            'value_offset': value_offset,
+            'include_unscaled': include_unscaled
+        }
         has_scaling = (scaling_factor is not None) or (value_offset is not None)
 
         if data is not None:
 
             # Find the minimum possible dtype for ASCII integers
-            if(data_type is not None) and data_type.issubtype('ASCII') and is_pds_integer_data(data=data):
+            if (data_type is not None) and data_type.issubtype('ASCII') and is_pds_integer_data(data=data):
                 dtype = get_min_integer_numpy_type(data)
 
             # Scale dtype if requested
@@ -222,7 +230,7 @@ def pds_to_builtin_type(data_type=None, data=None, decode_strings=False, decode_
         PDS4 scaling factor. If given, the returned data type will be large enough to contain data scaled by
         this number. Defaults to None, indicating a value of 1.
     value_offset : int, float or None, optional
-        PDS4 value offset. If given, the returned data type will will be large enough to contain data offset
+        PDS4 value offset. If given, the returned data type will be large enough to contain data offset
         by this number. Defaults to None, indicating a value of 0.
 
     Returns
@@ -792,6 +800,17 @@ def apply_scaling_and_value_offset(data, scaling_factor=None, value_offset=None,
 
         data += np.array(value_offset, dtype=offset_dtype)
 
+    # Cast down integers if possible
+    # (see note in `adjust_array_data_type` for why this can be necessary)
+    if is_pds_integer_data(data=data):
+
+        final_dtype = get_min_integer_numpy_type(data)
+
+        try:
+            data = data.astype(final_dtype, copy=False)
+        except TypeError:
+            data = data.astype(final_dtype)
+
     # Restore the original mask if necessary, removing any additional mask applied above for Special_Constants
     if (special_constants is not None) and (mask is not None):
         data.mask = mask
@@ -805,6 +824,13 @@ def adjust_array_data_type(array, scaling_factor=None, value_offset=None):
     *scaling_factor* or *value_offset* would result in an overflow. This can be necessary both
     if the array is data from a PDS4 Array or a PDS4 Table, so long as it has a scaling factor or value
     offset associated with it.
+
+    Notes
+    -----
+    The resultant dtype is not necessarily the smallest the data will fit into while preserving
+    precision after applying scaling / offset. For example, for integers, the value of *array*
+    prior to scaling / offset must also still fit the data type, and this can be larger than
+    the scaled / offset data type if that operation makes the final value smaller.
 
     Parameters
     ----------
@@ -821,16 +847,19 @@ def adjust_array_data_type(array, scaling_factor=None, value_offset=None):
         Original *array* modified to have a new data type if necessary or unchanged if otherwise.
     """
 
-    new_dtype = get_scaled_numpy_type(data=array, scaling_factor=scaling_factor, value_offset=value_offset)
+    new_dtype = get_scaled_numpy_type(data=array,
+                                      scaling_factor=scaling_factor,
+                                      value_offset=value_offset,
+                                      include_unscaled=True)
 
     if new_dtype == 'object':
         logger.warning('Detected integer Field with precision exceeding memory efficient case.')
 
     # Only adjust if the data types are not the same, and if the adjustment would not result in loss of
     # precision. The latter also prevents us from adjusting data that becomes smaller on application of
-    # scaling, because adjusting it now (while it is larger) would result in an error.
+    # scaling, because adjusting it now (while it is larger) would result in an overflow.
     if (array.dtype.name != new_dtype.name) and (array.dtype != 'object') and (
-                not np.issubdtype(new_dtype, array.dtype) or array.dtype.itemsize < new_dtype.itemsize):
+            array.dtype.kind != new_dtype.kind or array.dtype.itemsize < new_dtype.itemsize):
 
         try:
             array = array.astype(new_dtype, copy=False)
@@ -840,7 +869,8 @@ def adjust_array_data_type(array, scaling_factor=None, value_offset=None):
     return array
 
 
-def get_scaled_numpy_type(data_type=None, data=None, scaling_factor=None, value_offset=None):
+def get_scaled_numpy_type(data_type=None, data=None, scaling_factor=None, value_offset=None,
+                          include_unscaled=False):
     """ Obtain the NumPy dtype that would be necessary to store PDS4 data once that data has been scaled.
 
     When scaling data, the final data type is likely going to be different from the original data type
@@ -868,11 +898,16 @@ def get_scaled_numpy_type(data_type=None, data=None, scaling_factor=None, value_
         PDS4 scaling factor that will later be applied to the data. Defaults to None, indicating a value of 1.
     value_offset : int, float, or None
         PDS4 value offset that will later be applied to the data. Defaults to None, indicating a value of 0.
+    include_unscaled : bool, optional
+        If True, and when combined with *data*, *scaling_factor* and/or *value_offset*, the returned dtype
+        will not only be large enough to store the scaled data but also large enough to store the unscaled
+        *data*. Defaults to False.
 
     Returns
     -------
     np.dtype
-        A NumPy dtype large enough to store the data if it has had *scaling_factor* and *value_offset*.
+        A NumPy dtype large enough to store the data if it has had *scaling_factor* and *value_offset* applied.
+        If *include_unscaled*, the dtype is also large enough to store *data* prior to scaling and offset.
     """
 
     if (data is None) and (data_type is None):
@@ -920,11 +955,18 @@ def get_scaled_numpy_type(data_type=None, data=None, scaling_factor=None, value_
 
             # Find min and max data (so we do not have to multiply all data, which is slower)
             # Note: cast to int must stay, otherwise NumPy integers may overflow
-            min_data = int(data.view(np.ndarray).min()) * scaling_factor + value_offset
-            max_data = int(data.view(np.ndarray).max()) * scaling_factor + value_offset
+            min_data = int(data.view(np.ndarray).min())
+            max_data = int(data.view(np.ndarray).max())
+            min_scaled_data = min_data * scaling_factor + value_offset
+            max_scaled_data = max_data * scaling_factor + value_offset
 
             # Obtain type necessary to store all integers
-            new_dtype = get_min_integer_numpy_type([min_data, max_data])
+            if include_unscaled:
+                check_values = [min_data, max_data, min_scaled_data, max_scaled_data]
+            else:
+                check_values = [min_scaled_data, max_scaled_data]
+
+            new_dtype = get_min_integer_numpy_type(check_values)
 
     else:
         raise ValueError('Attempted to scale data which does not appear scalable.')
