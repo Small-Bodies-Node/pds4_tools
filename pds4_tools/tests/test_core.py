@@ -1250,12 +1250,10 @@ class TestMaskedData(PDS4ToolsTestCase):
     def test_array_scaling_with_special_constants(self):
 
         # Test that Special_Constants are ignored during scaling/offset for arrays (integers)
-        # Note: It may appear that the dtype here should be uint32. See Notes section of
-        # `pds4_tools.reader.data_types.get_scaled_numpy_type` for details as to why it is not.
         array_unsigned_msb4 = self.structures[3]
 
         unsigned_msb4 = [251746175, 3994967214, 3994967214, 1217070]
-        _check_array_equal(array_unsigned_msb4.data, unsigned_msb4, 'int64')
+        _check_array_equal(array_unsigned_msb4.data, unsigned_msb4, 'uint32')
 
         # Test that Special_Constants are ignored during scaling/offset for arrays (reals)
         array_lsb_double = self.structures[4]

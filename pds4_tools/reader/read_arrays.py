@@ -184,7 +184,7 @@ def new_array(input, no_scale=False, no_bitmask=False, masked=None, copy=True, *
                                         'value_offset': element_array.get('value_offset')}
 
     # Obtain dtype (ensuring to scale it for future application of scaling and offset if necessary)
-    dtype = pds_to_numpy_type(meta_data.data_type(), data=array, **scale_kwargs)
+    dtype = pds_to_numpy_type(meta_data.data_type(), data=array, include_unscaled=False, **scale_kwargs)
 
     # Obtain shape
     array_shape = meta_data.dimensions()
