@@ -6,6 +6,8 @@ from __future__ import unicode_literals
 import inspect
 from xml.etree import ElementTree as ET
 
+import numpy as np
+
 from ..extern import six
 
 # OrderedDict compat (Python 2.7+ and 3.1+)
@@ -25,6 +27,17 @@ ET_Element = ET.Element if isinstance(ET.Element, six.class_types) else ET._Elem
 ET_Tree_iter = ET.ElementTree.iter if hasattr(ET.ElementTree, 'iter') else ET.ElementTree.getiterator
 ET_Element_iter = ET_Element.iter if hasattr(ET_Element, 'iter') else ET_Element.getiterator
 ET_ParseError = ET.ParseError if hasattr(ET, 'ParseError') else None
+
+# NumPy compat (NumPy 2.0+)
+try:
+    np_unicode = np.unicode_
+except AttributeError:
+    np_unicode = np.str_
+
+try:
+    np_issubclass = np.issubclass_
+except AttributeError:
+    np_issubclass = issubclass
 
 
 # signature.bind(...).arguments compat (Python 3.3+)
