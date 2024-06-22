@@ -1612,7 +1612,7 @@ class ImageViewWindow(DataViewWindow):
         # still has the previous norm, and set_cmap() will try to update its min/max without updating the norm
         # type. Therefore we set the cmap manually, then update the colormap, then call changed() ourselves on
         # the AxisImage to update it
-        self._image.cmap = mpl.cm.get_cmap(cmap)
+        self._image.cmap = MPLCompat.get_colormap(cmap)
         self._update_colorbar()
         self._image.changed()
 
@@ -2315,11 +2315,14 @@ class Colorbar(object):
             pad = 2
 
         # Create a new FigureCanvas for the Figure
+        # (silencing unnecessary warning about adding colorbar to different figure than main image)
         self._orientation = orientation
         self._format = '%4.2e'
 
         self._figure_canvas = FigureCanvas(colorbar_figure, master=self._frame)
-        self._mpl_colorbar = colorbar_figure.colorbar(image, orientation=orientation, cax=cax, format=self._format)
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', message=".*adding colorbar to a different figure.*")
+            self._mpl_colorbar = colorbar_figure.colorbar(image, orientation=orientation, cax=cax, format=self._format)
         self._mpl_colorbar.ax.tick_params(pad=pad, direction=direction)
 
         # Update colorbar dimensions (in this case setting the colorbar's initial size)
@@ -2853,12 +2856,12 @@ class ScaleParametersWindow(Window):
         if self._min_line is None:
             self._min_line = histogram_axis.axvline(x=scale_min_set, color='r', linewidth=2)
         else:
-            self._min_line.set_xdata(scale_min_set)
+            self._min_line.set_xdata([scale_min_set])
 
         if self._max_line is None:
             self._max_line = histogram_axis.axvline(x=scale_max_set, color='g', linewidth=2)
         else:
-            self._max_line.set_xdata(scale_max_set)
+            self._max_line.set_xdata([scale_max_set])
 
         self._figure_canvas.draw()
 
