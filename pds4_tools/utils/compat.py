@@ -29,7 +29,7 @@ ET_Element_iter = ET_Element.iter if hasattr(ET_Element, 'iter') else ET_Element
 ET_ParseError = ET.ParseError if hasattr(ET, 'ParseError') else None
 
 # NumPy compat (NumPy 2.0+)
-NUMPY_LT_2_0 = np.version.short_version.startswith(('0.', '1.'))
+NUMPY_LT_2_0 = np.__version__.startswith(('0.', '1.'))
 
 try:
     np_unicode = np.unicode_
