@@ -28,8 +28,8 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install tox
-        pip install tox-gh-actions
+        python -m pip install tox
+        python -m pip install tox-gh-actions
 
     - name: Test Code
       run: tox
@@ -55,11 +55,11 @@ jobs:
       shell: bash
       run: |
         if [[ ${{ matrix.python-version }} == 3.3* ]]; then
-          pip install virtualenv==15.2.0
-          pip install pluggy==0.5.2
-          pip install tox==2.9.1
+          python -m pip install virtualenv==15.2.0
+          python -m pip install pluggy==0.5.2
+          python -m pip install tox==2.9.1
         fi
-        pip install tox
+        python -m pip install tox
 
     - name: Test Code
       shell: bash
@@ -85,8 +85,8 @@ jobs:
 
     - name: Install dependencies
       run: |
-        pip install tox
-        pip install tox-gh-actions==2.8.1
+        python -m pip install tox
+        python -m pip install tox-gh-actions==2.8.1
 
     - name: Test Code
       run: tox
@@ -105,13 +105,13 @@ jobs:
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
-        python-version: '3.9'
+        python-version: '3.11'
 
     - name: Install dependencies
       run: |
-        pip install numpy
-        pip install sphinx
-        pip install numpydoc
+        python -m pip install numpy
+        python -m pip install sphinx
+        python -m pip install numpydoc
 
     - name: Test Docs
       run: sphinx-build -W --keep-going doc _build/html
@@ -132,28 +132,27 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.9'
+        python-version: '3.11'
 
     - name: Install dependencies
       run: |
-        pip install wheel
-        pip install numpy
-        pip install sphinx
-        pip install numpydoc
+        python -m pip install build
+        python -m pip install numpy
+        python -m pip install sphinx
+        python -m pip install numpydoc
 
     - name: Create artifacts
       run: |
-        python setup.py sdist --formats=zip
-        python setup.py bdist_wheel
+        python -m build
 
         VERSION=$(python setup.py --version)
         sphinx-build -W --keep-going doc _build/html
         tar -C _build/html -zcf dist/docs-${VERSION}.tar.gz .
 
     - name: Save artifacts to Github Actions
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: docs, source zip, wheel
+        name: docs, source tar, wheel
         path: dist/*
         if-no-files-found: error
 
@@ -226,16 +225,15 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.9'
+        python-version: '3.11'
 
     - name: Install dependencies
       run: |
-        pip install wheel
+        python -m pip install build
 
     - name: Create artifacts
       run: |
-        python setup.py sdist --formats=zip
-        python setup.py bdist_wheel
+        python -m build
 
     - name: Publish to Test PyPI
       uses: pypa/gh-action-pypi-publish@v1.4.2

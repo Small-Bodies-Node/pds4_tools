@@ -16,9 +16,8 @@ Building PDS4 Tools:
 
         Using Python 3, from the directory containing setup.py for pds4_tools, run:
 
-        pip install wheel
-        python setup.py sdist --formats=zip
-        python setup.py bdist_wheel
+        python -m pip install build
+        python -m build
 
         This will make a compressed distribution inside the 'dist' directory.
 
@@ -33,10 +32,10 @@ Building PDS4 Tools:
       5) Upload to PyPi via,
 
             Setup a ~/.pypirc file for both PyPi and TestPyPi. See:
-            https://packaging.python.org/guides/migrating-to-pypi-org/
+            https://packaging.python.org/en/latest/specifications/pypirc/#common-configurations
 
-            pip install twine
-            twine upload dist/pds4_tools-xx.zip
+            python -m pip install twine
+            twine upload dist/pds4_tools-xx.tar.gz
             twine upload dist/pds4_tools-xx-py2.py3-none-any.whl
 
             You may append  '-r testpypi' to the last two commands to upload to the test PyPi

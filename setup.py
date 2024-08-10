@@ -34,6 +34,7 @@ setup(
 
     description='Package to read and display NASA PDS4 data',
     long_description=read('README.rst'),
+    long_description_content_type='text/x-rst',
 
     author=about['__author__'],
     author_email=about['__email__'],
