@@ -8,7 +8,7 @@ import numpy as np
 
 from .data_types import pds_to_numpy_name
 
-from ..utils.compat import OrderedDict, np_issubclass
+from ..utils.compat import NUMPY_LT_2_0, OrderedDict, np_issubclass
 from ..extern import six
 
 
@@ -212,7 +212,7 @@ class PDS_ndarray(np.ndarray):
 
         self.meta_data = getattr(obj, 'meta_data', OrderedDict())
 
-    def __array_wrap__(self, out_arr, context=None):
+    def __array_wrap__(self, out_arr, context=None, return_scalar=False):
         """
         Based on AstroPy ``Column.__array_wrap__`` implementation. __array_wrap__ is
         called at the end of every ufunc.
@@ -223,21 +223,26 @@ class PDS_ndarray(np.ndarray):
         1) If the output shape is different (e.g. for reduction ufuncs
            like sum() or mean()), a PDS_array makes little sense, so we return
            the output viewed as the array content (ndarray or MaskedArray).
-           For this case, we use "[()]" to select everything, and to ensure we
+           For this case, if numpy tells us to ``return_scalar`` (for numpy
+           >= 2.0, otherwise assume to be true), we use "[()]" to ensure we
            convert a zero rank array to a scalar. (For some reason np.sum()
            returns a zero rank scalar array while np.mean() returns a scalar;
-           So the [()] is needed for this case.
+           So the [()] is needed for this case.)
 
         2) When the output is created by any function that returns a boolean
            we also want to consistently return an array rather than a PDS_ndarray"
         """
 
-        out_arr = super(PDS_ndarray, self).__array_wrap__(out_arr, context)
+        if NUMPY_LT_2_0:
+            out_arr = super(PDS_ndarray, self).__array_wrap__(out_arr, context)
+            return_scalar = True
+        else:
+            out_arr = super(PDS_ndarray, self).__array_wrap__(out_arr, context, return_scalar)
 
         if (self.shape != out_arr.shape or
             (isinstance(out_arr, PDS_ndarray) and
              (context is not None and context[0] in _comparison_functions))):
-            return out_arr[()]
+            return out_arr[()] if return_scalar else out_arr.data
         else:
             return out_arr
 
@@ -484,7 +489,7 @@ class PDS_marray(np.ma.MaskedArray, PDS_ndarray):
         self.meta_data = getattr(obj, 'meta_data', OrderedDict())
         np.ma.MaskedArray.__array_finalize__(self, obj)
 
-    def __array_wrap__(self, out_arr, context=None):
+    def __array_wrap__(self, out_arr, context=None, return_scalar=False):
         """
         Based on AstroPy ``Column.__array_wrap__`` implementation. __array_wrap__ is
         called at the end of every ufunc.
@@ -495,21 +500,26 @@ class PDS_marray(np.ma.MaskedArray, PDS_ndarray):
         1) If the output shape is different (e.g. for reduction ufuncs
            like sum() or mean()), a PDS_array makes little sense, so we return
            the output viewed as the array content (ndarray or MaskedArray).
-           For this case, we use "[()]" to select everything, and to ensure we
+           For this case, if numpy tells us to ``return_scalar`` (for numpy
+           >= 2.0, otherwise assume to be true), we use "[()]" to ensure we
            convert a zero rank array to a scalar. (For some reason np.sum()
            returns a zero rank scalar array while np.mean() returns a scalar;
-           So the [()] is needed for this case.
+           So the [()] is needed for this case.)
 
         2) When the output is created by any function that returns a boolean
            we also want to consistently return an array rather than a PDS_marray."
         """
 
-        out_arr = super(PDS_marray, self).__array_wrap__(out_arr, context)
+        if NUMPY_LT_2_0:
+            out_arr = super(PDS_marray, self).__array_wrap__(out_arr, context)
+            return_scalar = True
+        else:
+            out_arr = super(PDS_marray, self).__array_wrap__(out_arr, context, return_scalar)
 
         if (self.shape != out_arr.shape or
                 (isinstance(out_arr, PDS_marray) and
                      (context is not None and context[0] in _comparison_functions))):
-            return out_arr[()]
+            return out_arr[()] if return_scalar else out_arr.data
         else:
             return out_arr
 
