@@ -1312,10 +1312,11 @@ def get_display_settings_for_lid(local_identifier, label):
     for display in displays:
 
         # Look in both PDS and DISP namespace due to standards changes in the display dictionary
-        lid_disp = display.findtext('.//disp:local_identifier_reference')
-        lid_pds = display.findtext('.//local_identifier_reference')
+        disp_lids = display.findall('.*/disp:local_identifier_reference')
+        pds_lids = display.findall('.*/local_identifier_reference')
+        all_lids = [lid.text for lid in disp_lids + pds_lids]
 
-        if local_identifier in (lid_disp, lid_pds):
+        if all_lids.count(local_identifier):
             matching_display = display
             break
 
@@ -1348,21 +1349,14 @@ def get_spectral_characteristics_for_lid(local_identifier, label):
     # Find the particular Spectral Characteristics for this LID
     for spectral in spectra:
 
-        # There may be multiple local internal references for each spectral data object sharing these
-        # characteristics. Also look in both PDS and SP namespace due to standards changes in the spectral
-        # dictionary
-        references = spectral.findall('sp:Local_Internal_Reference') + \
-                     spectral.findall('Local_Internal_Reference')
+        # Look in both PDS and SP namespace due to standards changes in the spectral dictionary
+        sp_lids = spectral.findall('.*/sp:local_identifier_reference')
+        pds_lids = spectral.findall('.*/local_identifier_reference')
+        all_lids = [lid.text for lid in sp_lids + pds_lids]
 
-        for reference in references:
-
-            # Look in both PDS and DISP namespace due to standards changes in the display dictionary
-            lid_sp = reference.findtext('sp:local_identifier_reference')
-            lid_pds = reference.findtext('local_identifier_reference')
-
-            if local_identifier in (lid_sp, lid_pds):
-                matching_spectral = spectral
-                break
+        if all_lids.count(local_identifier):
+            matching_spectral = spectral
+            break
 
     return matching_spectral
 
