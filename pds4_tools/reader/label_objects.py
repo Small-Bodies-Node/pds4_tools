@@ -587,7 +587,7 @@ class Label(object):
             Generates representation of unmodified ``ElementTree`` root if True, or the convenient one if
             False. Defaults to None, which uses `Label.default_root` to decide.
         skip_attributes : bool, optional
-            If True, skips adding attributes from XML. Defaults to False.
+            If True, skips adding attributes from XML. Defaults to True.
         cast_values : bool, optional
             If True, float and int compatible values of element text and attribute values will be cast as such
             in the output dictionary. Defaults to False.
