@@ -429,7 +429,7 @@ class Label(object):
         return found_elements
 
     def findtext(self, match, default=None, namespaces=None, unmodified=None):
-        """ Finds text for the first subelement matching match.
+        """ Finds text for the first subelement matching *match*.
 
         Uses the same format as ``ElementTree.findtext``. See `Label` docstring or ``ElementTree.findtext``
         documentation for examples and supported XPATH description.
@@ -453,6 +453,7 @@ class Label(object):
 
         Returns
         -------
+        str or unicode
             Text of the first matched element, or *default* otherwise.
         """
 
@@ -463,6 +464,66 @@ class Label(object):
 
         else:
             return found_element.text
+
+    def iter(self, tag=None):
+        """ Create an iterator containing the current element and all elements below it.
+
+        Uses the same format as ``ElementTree.iter``.
+
+        Parameters
+        ----------
+        tag : str or unicode, optional
+            When given, include only elements with a matching tag name in the iterator.
+
+        Returns
+        -------
+        Iterator[Label]
+            An iterator yielding the current element and all elements below it in document (depth first) order.
+            Filtered by *tag* when given.
+        """
+
+        if tag == "*":
+            tag = None
+
+        if (tag is None) or (self.tag == tag):
+            yield self
+
+        for child in self:
+            for element in child.iter(tag):
+                yield element
+
+    def itertext(self):
+        """ Create an iterator containing the inner text of the current element and all elements below it.
+
+        Uses the same format as ``ElementTree.Element.itertext``.
+
+        Notes
+        -----
+        Inner text is the text and tail attributes.
+
+        Returns
+        -------
+        Iterator[str or unicode]
+            An iterator yielding the inner text of the current element and all elements below it in document
+            (depth first) order.
+        """
+
+        tag = self.tag
+        if not isinstance(tag, six.string_types) and tag is not None:
+            return
+
+        text = self.text
+        if text:
+            yield text
+
+        for child in self:
+
+            for element in child.itertext():
+                yield element
+
+            tail = child.tail
+            if tail:
+                yield tail
 
     def to_string(self, unmodified=True, pretty_print=False):
         """ Generate a string representation of XML label.

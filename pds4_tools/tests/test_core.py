@@ -24,6 +24,7 @@ from pds4_tools.utils.deprecation import (PDS4ToolsDeprecationWarning, deprecate
                                           rename_parameter, delete_parameter)
 
 from pds4_tools.extern import six
+from pds4_tools.extern.six.moves import collections_abc
 
 
 class TestStructureList(PDS4ToolsTestCase):
@@ -716,6 +717,50 @@ class TestLabel(PDS4ToolsTestCase):
         discipline_name2 = self.label.findtext('.//pds:discipline_name', unmodified=True)
 
         assert discipline_name1 == discipline_name2 == 'Atmospheres'
+
+    def test_iter(self):
+
+        # Test without tag filtering
+
+        label_iterator = self.label.iter()
+        element_iterator = self.label.getroot().iter()
+
+        # Ensure result is an iterator with same number of values
+        assert isinstance(label_iterator, collections_abc.Iterator)
+        assert len(list(label_iterator)) == len(list(element_iterator))
+
+        # Ensure each value is a label identical to the element
+        for i, element in enumerate(label_iterator):
+            assert isinstance(element, Label)
+            assert element.getroot() == element_iterator[i]
+
+        # Test with tag filtering
+
+        label_iterator = self.label.iter(tag="Axis_Array")
+        element_iterator = self.label.getroot().iter(tag="Axis_Array")
+
+        # Ensure result is an iterator with same number of values
+        assert isinstance(label_iterator, collections_abc.Iterator)
+        assert len(list(label_iterator)) == len(list(element_iterator))
+
+        # Ensure each value is a label identical to the element
+        for i, element in enumerate(label_iterator):
+            assert isinstance(element, Label)
+            assert element.getroot() == element_iterator[i]
+
+        # Test with non-existent tag
+        label_iterator = self.label.iter(tag="nonexistent")
+
+        assert isinstance(label_iterator, collections_abc.Iterator)
+        assert len(list(label_iterator)) == 0
+
+    def test_itertext(self):
+
+        text_iterator1 = self.label.itertext()
+        text_iterator2 = self.label.getroot().itertext()
+
+        assert isinstance(text_iterator1, collections_abc.Iterator)
+        assert list(text_iterator1) == list(text_iterator2)
 
     def test_unicode(self):
 
