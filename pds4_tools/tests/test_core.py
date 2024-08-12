@@ -695,7 +695,27 @@ class TestLabel(PDS4ToolsTestCase):
         assert isinstance(title2, list)
         assert isinstance(title2[0], compat.ET_Element)
 
-    # def test_findtext(self):
+    def test_findtext(self):
+
+        # Direct path and descendant search matching
+        start_date_time1 = self.label.findtext('Observation_Area/Time_Coordinates/start_date_time')
+        start_date_time2 = self.label.findtext('.//start_date_time')
+
+        assert start_date_time1 == start_date_time2 == '2015-06-01T00:36:23.03Z'
+
+        # Ensure we get the first value back in a search with multiple results
+        first_axis_name = self.label.findtext('.//axis_name')
+        assert first_axis_name == 'Time'
+
+        # Default value when no result is found
+        nonexistent_element = self.label.findtext('nonexistent_element', default='not found')
+        assert nonexistent_element == 'not found'
+
+        # Namespace searching
+        discipline_name1 = self.label.findtext('.//discipline_name', unmodified=False)
+        discipline_name2 = self.label.findtext('.//pds:discipline_name', unmodified=True)
+
+        assert discipline_name1 == discipline_name2 == 'Atmospheres'
 
     def test_unicode(self):
 
