@@ -203,8 +203,7 @@ class Label(object):
             Attributes of element.
         """
 
-        # Make a copy so that assignment of individual values with-in the dictionary cannot make the two
-        # roots out of sync
+        # Make a copy to ensure assignment in returned value cannot make the two roots out of sync
         return self.getroot().attrib.copy()
 
     @property
@@ -247,27 +246,6 @@ class Label(object):
 
         self._default_root = value
 
-    def get(self, key, default=None, unmodified=None):
-        """ Gets the element attribute named *key*.
-
-        Uses the same format as ``ElementTree.get``.
-
-        Parameters
-        ----------
-        key : str or unicode
-            Attribute name to select.
-        default : optional
-            Value to return if no attribute matching *key* is found. Defaults to None.
-        unmodified : bool or None
-            Looks for key in unmodified ``ElementTree`` root if True, or the convenient one if False.
-            Defaults to None, which uses `Label.default_root` to decide.
-
-        Returns
-        -------
-            Value of the attribute named *key* if it exists, or *default* otherwise.
-        """
-        return self.getroot(unmodified=unmodified).get(key, default)
-
     def getroot(self, unmodified=None):
         """ Obtains ``ElementTree`` root Element instance underlying this object.
 
@@ -290,6 +268,64 @@ class Label(object):
             root = self._unmodified_root
 
         return root
+
+    def get(self, key, default=None, unmodified=None):
+        """ Gets the element attribute named *key*.
+
+        Uses the same format as ``ElementTree.get``.
+
+        Parameters
+        ----------
+        key : str or unicode
+            Attribute name to select.
+        default : optional
+            Value to return if no attribute matching *key* is found. Defaults to None.
+        unmodified : bool or None
+            Looks for key in unmodified ``ElementTree`` root if True, or the convenient one if False.
+            Defaults to None, which uses `Label.default_root` to decide.
+
+        Returns
+        -------
+            Value of the attribute named *key* if it exists, or *default* otherwise.
+        """
+        return self.getroot(unmodified=unmodified).get(key, default)
+
+    def keys(self, unmodified=None):
+        """ Get a sequence of attribute names for the element.
+
+        Uses the same format as ``ElementTree.keys``.
+
+        Parameters
+        ----------
+        unmodified : bool or None
+            Get attribute names in unmodified ``ElementTree`` root if True, or the convenient one if False.
+            Defaults to None, which uses `Label.default_root` to decide.
+
+        Returns
+        -------
+        dict_keys or list
+            Attribute names for the element. Names are returned in arbitrary order.
+        """
+        return self.getroot(unmodified=unmodified).attrib.keys()
+
+    def items(self, unmodified=None):
+        """ Get element attributes as a sequence of (name, value) pairs.
+
+        Uses the same format as ``ElementTree.items``.
+
+        Parameters
+        ----------
+        unmodified : bool or None
+            Get attributes in unmodified ``ElementTree`` root if True, or the convenient one if False.
+            Defaults to None, which uses `Label.default_root` to decide.
+
+        Returns
+        -------
+        dict_items or list
+            Element attributes as a sequence of (name, value) pairs. The attributes are returned in
+            an arbitrary order.
+        """
+        return self.getroot(unmodified=unmodified).attrib.items()
 
     def find(self, match, namespaces=None, unmodified=None, return_ET=False):
         """ Search for the first matching subelement.
