@@ -112,11 +112,12 @@ elementâ€™s text is ``65``.
 The ``.label`` attribute of a `StructureList` or a `Structure` is a `Label` instance,
 another PDS4 Tools object. It provides access to the XML label content, although
 some knowledge of `XPATH expressions <https://docs.python.org/3/library/xml.etree.elementtree.html#example>`_
-is generally required for search and usage. You may however use the
-``label.to_dict()`` and ``label.to_string()`` methods to obtain more familiar
-access. Below we provide some examples of using ``.label`` and ``.meta_data``.
+is generally required for search and usage. You may however use the `Label.to_dict()`
+and `Label.to_string()` methods to obtain more familiar access; see also the parameters
+to these functions for additional capability. Below we provide some examples of using
+``.label`` and ``.meta_data``.
 
-To search a Label instance, you may use,
+To search a Label for an element,
 
 .. code-block:: python
 
@@ -130,7 +131,7 @@ To search a Label instance, you may use,
 This uses XPATH to find the first occurrence of the ``start_date_time`` and
 ``record_length`` elements, no matter how deep in the XML tree they are.
 
-If there are multiple occurrences of an element, you may use,
+To search a Label for all occurrences of an element,
 
 .. code-block:: python
 
@@ -140,7 +141,7 @@ If there are multiple occurrences of an element, you may use,
     >>> lids[1].text
     'Integration'
 
-To search for elements outside of the core PDS namespace, one may use,
+To search a Label for elements outside of the core PDS namespace,
 
 .. code-block:: python
 
@@ -153,7 +154,23 @@ For more details, we encourage you to see the `Supported XPATH syntax section
 of the Python manual for ElementTree, which underlines the implementation of
 the PDS4 Tools' Label object.
 
-For an individual `Structure`, we can use ``.meta_data`` attribute to access the
+To convert a Label to a dictionary or string,
+
+.. code-block:: python
+
+    >>> structures.label.to_dict()
+    # Entire label is output as a dict
+
+    >>> structures.label.to_string()
+    # Entire label is output as a string
+
+    >>> structures.label.find('.//record_length').to_dict()
+    {'record_length': '113'}
+
+    >>> structures.label.find('.//record_length').to_dict(cast_values=True, skip_attributes=False)
+    {'record_length': {'@unit': 'byte', '_text': 113}}
+
+For an individual `Structure` we can use the ``.meta_data`` attribute to access the
 associated label information. This attribute may be a number of `Meta_Class`
 derived instances, all of which inherit from the ``OrderedDict`` Python data structure.
 Below we show some sample meta data for an array described by the label,
@@ -254,7 +271,7 @@ command, specifically a multiplication and division of all values,
 
     >>> data = (data * 10) / 5
 
-To access label meta data for an `ArrayStructure`, we may use its ``.meta_data``
+To access label meta data for an `ArrayStructure` we can use its ``.meta_data``
 attribute. See the :ref:`Working with PDS4 Labels <working_with_pds4_labels>`
 section for examples, as well as the `Meta_ArrayStructure` class.
 
@@ -350,7 +367,7 @@ than can give the field's meta data as recorded in the label,
     >>> field.meta_data.keys()
     ['name', 'location', 'data_type', 'length', 'unit', 'description']
 
-To access label meta data for the entire `TableStructure`, we may use its
+To access label meta data for the entire `TableStructure` we can use its
 ``.meta_data`` attribute. See the :ref:`Working with PDS4 Labels <working_with_pds4_labels>`
 section for examples, as well as the `Meta_TableStructure` class.
 
