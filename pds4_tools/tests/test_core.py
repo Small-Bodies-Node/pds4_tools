@@ -567,6 +567,27 @@ class TestLabel(PDS4ToolsTestCase):
         assert xml_equal(object_length2, object_length2.getroot())
         assert xml_equal(object_length2.getroot(unmodified=False), object_length2.getroot())
 
+    def test_keys(self):
+
+        element = self.label[0][3]
+
+        assert sorted(element.keys(unmodified=True)) == ['attrib1', 'attrib2']
+        assert sorted(element.keys(unmodified=False)) == ['attrib1', 'attrib2']
+
+    def test_items(self):
+
+        element = self.label[0][3]
+
+        assert sorted(element.items(unmodified=True)) == [
+            ('attrib1', '  is_space_significant  '),
+            ('attrib2', '1')
+        ]
+
+        assert sorted(element.items(unmodified=False)) == [
+            ('attrib1', 'is_space_significant'),
+            ('attrib2', '1')
+        ]
+
     def test_find(self):
 
         # Direct path and descendant search matching
