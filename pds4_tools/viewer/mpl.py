@@ -261,7 +261,7 @@ class MPLCompat(object):
 
         # Allow safe import of PowerNorm (available in MPL v1.4+)
         try:
-            from matplotlib.colors import PowerNorm
+            from mpl.colors import PowerNorm
 
         except ImportError:
             PowerNorm = None
@@ -274,11 +274,11 @@ class MPLCompat(object):
         # Allow safe import of MatplotlibDeprecationWarning
         # MPL v3+
         try:
-            from matplotlib import MatplotlibDeprecationWarning
+            from mpl import MatplotlibDeprecationWarning
         except ImportError:
             # MPL v1.3+
             try:
-                from matplotlib.cbook import MatplotlibDeprecationWarning
+                from mpl.cbook import MatplotlibDeprecationWarning
             except ImportError:
                 MatplotlibDeprecationWarning = DeprecationWarning
 
@@ -286,12 +286,28 @@ class MPLCompat(object):
 
     @staticmethod
     def _mpl_version():
+
+        def safe_cast(func, value):
+            try:
+                return func(value)
+            except ValueError:
+                return value
+
         version_split = mpl.__version__.split('.')
-        return [int(v) for v in version_split]
+        return [safe_cast(int, v) for v in version_split]
 
     NavigationToolbar2Tk = _get_navigation_toolbar.__get__(object)()
     DeprecationWarning = _get_deprecation_warning.__get__(object)()
     PowerNorm = _get_power_norm.__get__(object)()
+
+    @staticmethod
+    def get_colormap(name):
+        """ Allow safe use of ``mpl.colormaps`` (available in MPL v3.9.x) """
+
+        try:
+            return mpl.colormaps[name]
+        except AttributeError:
+            return mpl.cm.get_cmap(name)
 
     @staticmethod
     def canvas_resize(canvas, resize_event):
@@ -307,7 +323,7 @@ class MPLCompat(object):
 
     @staticmethod
     def axis_set_facecolor(axis, color):
-        """ Allow safe use of Axes.set_facecolor (available in MPL v1.5.x) """
+        """ Allow safe use of ``Axes.set_facecolor`` (available in MPL v1.5.x) """
 
         try:
             axis.set_facecolor(color)
@@ -316,7 +332,7 @@ class MPLCompat(object):
 
     @staticmethod
     def axis_set_grid(axis, **kwargs):
-        """ Allow safe use of Axes.grid(visible=bool) (available in MPL v3.5.x) """
+        """ Allow safe use of ``Axes.grid(visible=bool)`` (available in MPL v3.5.x) """
 
         if 'b' in kwargs:
             raise ValueError('Use *visible* instead of *b*.')
