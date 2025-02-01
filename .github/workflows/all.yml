@@ -43,9 +43,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ['3.4.10', '3.5.10']
-    env:
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+        python-version: ['3.5.10']
     steps:
 
     - name: Checkout repo
