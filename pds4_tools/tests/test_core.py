@@ -1369,6 +1369,56 @@ class TestMaskedData(PDS4ToolsTestCase):
         assert(isinstance(structure2.as_masked().data, PDS_marray))
 
 
+class TestDataArrays(PDS4ToolsTestCase):
+
+    def test_pds_ndarray(self):
+
+        # Initialization test
+        pds_array1 = PDS_ndarray([-1.5, 2.5, 9.5])
+        numpy_array1 = np.asarray([-1.5, 2.5, 9.5])
+
+        pds_array2 = PDS_ndarray([0, 2, 4])
+        numpy_array2 = np.asarray([0, 2, 4])
+
+        _check_array_equal(pds_array1, numpy_array1, numpy_array1.dtype)
+        _check_array_equal(pds_array2, numpy_array2, numpy_array2.dtype)
+
+        # Operations test
+        pds_sub_array1, pds_sub_array2 = pds_array1 + np.vstack([range(3),range(3)]) * pds_array2
+        numpy_sub_array1, numpy_sub_array2 = numpy_array1 + np.vstack([range(3),range(3)]) * numpy_array2
+
+        _check_array_equal(pds_sub_array1, numpy_sub_array1, numpy_sub_array1.dtype)
+        _check_array_equal(pds_sub_array2, numpy_sub_array2, numpy_sub_array2.dtype)
+
+    def test_pds_marray(self):
+
+        # Initialization test
+        pds_array1 = PDS_marray([-1.5, 2.5, 9.5], mask=[False, True, False])
+        numpy_array1 = np.ma.MaskedArray([-1.5, 2.5, 9.5], mask=[False, True, False])
+
+        pds_array2 = PDS_marray([0, 2, 4], mask=[False, True, False])
+        numpy_array2 = np.ma.MaskedArray([0, 2, 4], mask=[False, True, False])
+
+        _check_array_equal(pds_array1, numpy_array1, numpy_array1.dtype)
+        _check_array_equal(pds_array2, numpy_array2, numpy_array2.dtype)
+
+        assert pds_array1[0] is not np.ma.masked
+        assert numpy_array1[0] is not np.ma.masked
+
+        assert pds_array1[1] is np.ma.masked
+        assert numpy_array1[1] is np.ma.masked
+
+        # Operations test
+        pds_sub_array1, pds_sub_array2 = pds_array1 + np.vstack([range(3), range(3)]) * pds_array2
+        numpy_sub_array1, numpy_sub_array2 = numpy_array1 + np.vstack([range(3), range(3)]) * numpy_array2
+
+        _check_array_equal(pds_sub_array1, numpy_sub_array1, numpy_sub_array1.dtype)
+        _check_array_equal(pds_sub_array2, numpy_sub_array2, numpy_sub_array2.dtype)
+
+        assert np.array_equal(pds_sub_array1.mask, numpy_sub_array1.mask)
+        assert np.array_equal(pds_sub_array2.mask, numpy_sub_array2.mask)
+
+
 class TestDownloadFile(PDS4ToolsTestCase):
 
     def test_download_file(self):

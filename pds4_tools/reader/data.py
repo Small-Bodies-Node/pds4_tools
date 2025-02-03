@@ -15,10 +15,19 @@ from ..extern import six
 # List of comparison functions. Used in __array_wrap__ to ensure they only
 # return plain ``np.ndarray`` or ``np.ma.MaskedArray`` as opposed to `PDS_ndarray`
 # or `PDS_marray`.
-_comparison_functions = set(
-    [np.greater, np.greater_equal, np.less, np.less_equal,
-     np.not_equal, np.equal,
-     np.isfinite, np.isinf, np.isnan, np.sign, np.signbit])
+_comparison_functions = set([
+    np.greater,
+    np.greater_equal,
+    np.less,
+    np.less_equal,
+    np.not_equal,
+    np.equal,
+    np.isfinite,
+    np.isinf,
+    np.isnan,
+    np.sign,
+    np.signbit
+])
 
 
 class PDS_array(object):
@@ -242,7 +251,7 @@ class PDS_ndarray(np.ndarray):
         if (self.shape != out_arr.shape or
             (isinstance(out_arr, PDS_ndarray) and
              (context is not None and context[0] in _comparison_functions))):
-            return out_arr[()] if return_scalar else out_arr.data
+            return out_arr[()] if return_scalar else out_arr
         else:
             return out_arr
 
@@ -519,7 +528,7 @@ class PDS_marray(np.ma.MaskedArray, PDS_ndarray):
         if (self.shape != out_arr.shape or
                 (isinstance(out_arr, PDS_marray) and
                      (context is not None and context[0] in _comparison_functions))):
-            return out_arr[()] if return_scalar else out_arr.data
+            return out_arr[()] if return_scalar else out_arr
         else:
             return out_arr
 
