@@ -1,7 +1,39 @@
-[1.4] - TBD
-===========
+[1.4] - 2025-03-16
+==================
 
-...
+Reader
+------
+
+**Added**
+
+- Add `Label.iter` and `Label.itertext` methods
+
+**Changed**
+
+- Drop support for Python 2.6, 3.4 and 3.5
+- Align docstring for `Label.to_dict(skip_attributes=...) <Label.to_dict>` parameter with its existing functionality
+
+**Fixed**
+
+- Compatibility with Python 3.12+, by updating vendored six to 1.17
+- Compatibility with NumPy 2.0+
+- Correct fill values for masked arrays having dtype of ``object``, previously broken after NumPy v1.24+
+- Drop requirement for ``tkinter`` package when only reader is imported
+
+Viewer
+------
+
+**Changed**
+
+- Allow multiple LIDs in a single Local_Internal_Reference due to PDS4 Standards change
+
+**Fixed**
+
+- Compatibility with matplotlib 3.9+
+- Do not raise exception for images where the display dictionary includes Movie_Display_Settings
+- Fix data cube functionality of image display for 4+ dimensional arrays
+- Ensure tkagg backend is still enforced with matplotlib 3.3+
+- Fix exception in plot view related to grid visibility with matplotlib 3.7+
 
 
 [1.3] - 2021-10-10
