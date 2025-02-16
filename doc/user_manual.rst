@@ -19,9 +19,7 @@ provide access to PDS4 data.
 1.2  Installation
 -----------------
 
-Installation instructions are currently provided at:
-
-https://sbnwiki.astro.umd.edu/wiki/Python_PDS4_Tools#Installation
+See `Installation instructions <https://pdssbn.astro.umd.edu/tools/pds4_tools_info/pds4_python_tools.html#installation>`_.
 
 
 1.3  Quick Tutorial
@@ -107,7 +105,7 @@ If you are not familiar with XML, a brief example would be,
 
 Where the ``record_length`` is called an element, the ``unit`` is called an
 attribute, its value is called an attribute value, and in this case the
-elementâ€™s text is ``65``.
+element's text is ``65``.
 
 The ``.label`` attribute of a `StructureList` or a `Structure` is a `Label` instance,
 another PDS4 Tools object. It provides access to the XML label content, although
@@ -117,7 +115,7 @@ and `Label.to_string()` methods to obtain more familiar access; see also the par
 to these functions for additional capability. Below we provide some examples of using
 ``.label`` and ``.meta_data``.
 
-To search a Label for an element,
+To search a `Label` for an element,
 
 .. code-block:: python
 
@@ -131,7 +129,7 @@ To search a Label for an element,
 This uses XPATH to find the first occurrence of the ``start_date_time`` and
 ``record_length`` elements, no matter how deep in the XML tree they are.
 
-To search a Label for all occurrences of an element,
+To search a `Label` for all occurrences of an element,
 
 .. code-block:: python
 
@@ -141,7 +139,7 @@ To search a Label for all occurrences of an element,
     >>> lids[1].text
     'Integration'
 
-To search a Label for elements outside of the core PDS namespace,
+To search a `Label` for elements outside of the core PDS namespace,
 
 .. code-block:: python
 
@@ -154,7 +152,7 @@ For more details, we encourage you to see the `Supported XPATH syntax section
 of the Python manual for ElementTree, which underlines the implementation of
 the PDS4 Tools' Label object.
 
-To convert a Label to a dictionary or string,
+To convert a `Label` to a dictionary or string,
 
 .. code-block:: python
 
