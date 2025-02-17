@@ -25,4 +25,4 @@ All common PDS4 data products are supported.
 This package is developed by the PDS Small Bodies Node.
 
 * `Usage Documentation <https://pdssbn.astro.umd.edu/tools/pds4_tools_docs/current/>`_
-* `Other Documentation <https://sbnwiki.astro.umd.edu/wiki/Python_PDS4_Tools>`_
+* `Other Documentation <https://pdssbn.astro.umd.edu/tools/pds4_tools_info/python_pds4_tools.html>`_
