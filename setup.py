@@ -39,7 +39,7 @@ setup(
     author=about['__author__'],
     author_email=about['__email__'],
 
-    url='https://sbnwiki.astro.umd.edu/wiki/Python_PDS4_Tools',
+    url='https://pdssbn.astro.umd.edu/tools/pds4_tools_info/python_pds4_tools.html',
     license='BSD',
     keywords=['pds4_viewer', 'pds4', 'pds'],
 
