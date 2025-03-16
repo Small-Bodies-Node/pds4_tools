@@ -3,3 +3,8 @@
     background-color: white !important;
     border: none            !important;
 }
+
+/* Do not change link color once visited */
+a:link, a:visited {
+    color: #CA7900;
+}
