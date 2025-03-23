@@ -310,8 +310,9 @@ def numpy_to_pds_type(dtype, ascii_numerics=False):
     dtype : np.dtype
         A NumPy data type.
     ascii_numerics
-        If True, the returned PDS4 data type will be an ASCII numeric type if the input dtype is numeric
-        or boolean. If False, the returned PDS4 data type will be a binary type. Defaults to False.
+        If True, the returned PDS4 data type will be an ASCII numeric or boolean type if the input dtype
+        is numeric or boolean. If False, the returned PDS4 data type will be a binary type. Defaults to
+        False.
 
     Returns
     -------
@@ -319,44 +320,52 @@ def numpy_to_pds_type(dtype, ascii_numerics=False):
         A PDS4 data type that could plausibly (see description above) correspond to the input dtype.
     """
 
+    # Ensure *dtype* is a NumPy dtype
+    dtype = np.dtype(dtype)
+
     # For string dtypes
     if np.issubdtype(dtype, np_unicode):
         data_type = 'UTF8_String'
 
-    elif np.issubdtype(dtype, np.string_):
+    elif np.issubdtype(dtype, np.bytes_):
         data_type = 'ASCII_String'
 
     # For datetime dtypes
     elif np.issubdtype(dtype, np.datetime64):
-        data_type = 'ASCII_Date_Time_YMD'
+
+        if dtype.name == PDS4_DATE_TYPES['ASCII_Date_YMD'][1]:
+            data_type = 'ASCII_Date_YMD'
+        else:
+            data_type = 'ASCII_Date_Time_YMD'
 
     # For numeric dtypes
     else:
 
-        # Get numeric ASCII types. We obtain these from builtin portion because if we attempt to match
-        # e.g. 'int16' to 'int64' it would fail but for ASCII types this should succeed.
-        ascii_types = dict((value[2], key)
-                           for key, value in six.iteritems(PDS_NUMERIC_TYPES)
-                           if ('ASCII' in key) and ('Numeric_Base' not in key))
-
-        # Get numeric non-ASCII types, including the correct endianness.
-        non_ascii_types = dict((np.dtype(value[1]).newbyteorder(value[0]), key)
-                               for key, value in six.iteritems(PDS_NUMERIC_TYPES)
-                               if ('ASCII' not in key) and ('Numeric_Base' not in key))
-
+        # Get numeric ASCII types
+        # (compare via np.dtype.kind because kind is unique for each ASCII type supported here)
         if ascii_numerics:
 
-            builtin_type = type(np.asscalar(np.array(0, dtype=dtype))).__name__
-            data_type = ascii_types.get(builtin_type, None)
+            ascii_types = dict((np.dtype(value[1]).kind, key)
+                               for key, value in six.iteritems(PDS_NUMERIC_TYPES)
+                               if ('ASCII' in key) and ('Numeric_Base' not in key))
 
+            data_type = ascii_types.get(dtype.kind, None)
+
+        # Get numeric non-ASCII types, including the correct endianness
+        # (compare via full np.dtype)
         else:
+
+            non_ascii_types = dict((np.dtype(value[1]).newbyteorder(value[0]), key)
+                                   for key, value in six.iteritems(PDS_NUMERIC_TYPES)
+                                   if ('ASCII' not in key) and ('Numeric_Base' not in key))
+
             data_type = non_ascii_types.get(dtype, None)
 
     # Raise error if we were unable to find a match
     if data_type is None:
 
         raise ValueError("Unable to convert NumPy data type, '{0}', to a PDS4 {1} data type.".
-                         format(dtype, 'ASCII' if ascii_numerics else 'binary'))
+                         format(dtype.name, 'ASCII' if ascii_numerics else 'binary'))
 
     return PDSdtype(data_type)
 
