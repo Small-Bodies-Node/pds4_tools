@@ -260,7 +260,7 @@ def pds_to_builtin_type(data_type=None, data=None, decode_strings=False, decode_
             _type = six.text_type if (np.issubdtype(data.dtype, np_unicode) or unicode_requested
                                       ) else six.binary_type
         else:
-            _type = type(np.asscalar(data[0]))
+            _type = type(data[0].item())
 
     # Get unscaled type from meta data
     else:
@@ -291,7 +291,7 @@ def pds_to_builtin_type(data_type=None, data=None, decode_strings=False, decode_
             else:
                 dtype = get_scaled_numpy_type(data_type=data_type, **kwargs)
 
-            _type = type(np.asscalar(np.zeros(1, dtype)))
+            _type = type(np.zeros(1, dtype).item())
 
     return _type
 
