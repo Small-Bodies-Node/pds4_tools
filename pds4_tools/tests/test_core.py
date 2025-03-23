@@ -13,7 +13,8 @@ from . import PDS4ToolsTestCase
 
 from pds4_tools import pds4_read
 from pds4_tools.reader.data import PDS_ndarray, PDS_marray
-from pds4_tools.reader.data_types import data_type_convert_dates, numpy_to_pds_type, PDSdtype
+from pds4_tools.reader.data_types import (data_type_convert_dates, pds_to_builtin_type,
+                                          numpy_to_pds_type, PDSdtype)
 from pds4_tools.reader.array_objects import ArrayStructure
 from pds4_tools.reader.table_objects import TableStructure, TableManifest
 from pds4_tools.reader.label_objects import Label
@@ -1464,6 +1465,56 @@ class TestDownloadFile(PDS4ToolsTestCase):
 
 
 class TestLibraryFunctions(PDS4ToolsTestCase):
+
+    def test_pds_to_builtin_type(self):
+
+        # Test *data_type* with strings
+        ascii_str1 = pds_to_builtin_type(data_type='ASCII_String')
+        ascii_str2 = pds_to_builtin_type(data_type='ASCII_String', decode_strings=True)
+        utf8_str3 = pds_to_builtin_type(data_type='UTF8_String', decode_strings=True)
+
+        assert ascii_str1 == six.binary_type
+        assert ascii_str2 == six.text_type
+        assert utf8_str3 == six.text_type
+
+        # Test *data_type* with ASCII numbers
+        ascii_int = pds_to_builtin_type(data_type='ASCII_NonNegative_Integer')
+        ascii_float1 = pds_to_builtin_type(data_type='ASCII_Real')
+        ascii_float2 = pds_to_builtin_type(data_type='ASCII_Integer', scaling_factor=5.5)
+
+        assert ascii_int == int
+        assert ascii_float1 == ascii_float2 == float
+
+        # Test *data_type* with binary numbers
+        np_int = pds_to_builtin_type(data_type='SignedMSB8')
+        np_float1 = pds_to_builtin_type(data_type='IEEE754LSBDouble')
+        np_float2 = pds_to_builtin_type(data_type='UnsignedByte', value_offset=2.5)
+
+        assert np_int == int
+        assert np_float1 == np_float2 == float
+
+        # Test *data_type* with boolean
+        ascii_bool = pds_to_builtin_type(data_type='ASCII_Boolean')
+        assert ascii_bool == bool
+
+        # Test *data* with strings
+        ascii_str1 = pds_to_builtin_type(data=np.asarray(['test', 'string'], dtype=np.bytes_))
+        ascii_str2 = pds_to_builtin_type(data=np.asarray(['test', 'string']), decode_strings=True)
+        utf8_str3 = pds_to_builtin_type(data=np.asarray(['test', 'string']), decode_strings=True)
+
+        assert ascii_str1 == six.binary_type
+        assert ascii_str2 == six.text_type
+        assert utf8_str3 == six.text_type
+
+        # Test *data* with numbers
+        np_int1 = pds_to_builtin_type(data=np.asarray([1, 1000], dtype=np.uint32))
+        np_int2 = pds_to_builtin_type(data=np.asarray([1, 1000], dtype=np.uint16), value_offset=-5)
+        np_float1 = pds_to_builtin_type(data=np.asarray([1.5, 1000.5], dtype=np.float64))
+        np_float2 = pds_to_builtin_type(data=np.asarray([1, 1000], dtype=np.uint64), scaling_factor=0.5)
+
+        assert np_int1 in six.integer_types
+        assert np_int2 == int
+        assert np_float1 == np_float2 == float
 
     def test_numpy_to_pds_type(self):
 
