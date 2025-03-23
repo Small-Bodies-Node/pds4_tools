@@ -59,10 +59,7 @@ setup(
 
         'License :: OSI Approved :: BSD License',
 
-        'Operating System :: Microsoft :: Windows',
-        'Operating System :: POSIX',
-        'Operating System :: Unix',
-        'Operating System :: MacOS',
+        'Operating System :: OS Independent',
 
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',
