@@ -13,7 +13,7 @@ from . import PDS4ToolsTestCase
 
 from pds4_tools import pds4_read
 from pds4_tools.reader.data import PDS_ndarray, PDS_marray
-from pds4_tools.reader.data_types import data_type_convert_dates
+from pds4_tools.reader.data_types import data_type_convert_dates, numpy_to_pds_type, PDSdtype
 from pds4_tools.reader.array_objects import ArrayStructure
 from pds4_tools.reader.table_objects import TableStructure, TableManifest
 from pds4_tools.reader.label_objects import Label
@@ -1461,6 +1461,43 @@ class TestDownloadFile(PDS4ToolsTestCase):
 
         assert xml_equal(structures_web1.label, structures_local.label)
         assert xml_equal(structures_web2.label, structures_local.label)
+
+
+class TestLibraryFunctions(PDS4ToolsTestCase):
+
+    def test_numpy_to_pds_type(self):
+
+        # Test strings
+        assert PDSdtype('UTF8_String') == numpy_to_pds_type(compat.np_unicode)
+        assert PDSdtype('ASCII_String') == numpy_to_pds_type(np.bytes_)
+
+        # Test bool
+        assert PDSdtype('ASCII_Boolean') == numpy_to_pds_type(np.bool_, ascii_numerics=True)
+
+        # Test ASCII numbers
+        assert PDSdtype('ASCII_Real') == numpy_to_pds_type(np.float32, ascii_numerics=True)
+        assert PDSdtype('ASCII_Integer') == numpy_to_pds_type(np.int8, ascii_numerics=True)
+        assert PDSdtype('ASCII_NonNegative_Integer') == numpy_to_pds_type(np.uint32, ascii_numerics=True)
+
+        # Test binary numbers
+        np_lsb_float64 = np.dtype(np.float64).newbyteorder('<')
+        np_int8 = np.dtype(np.int8)
+        np_lsb_uint64 = np.dtype(np.uint64).newbyteorder('<')
+        np_msb_int32 = np.dtype(np.int32).newbyteorder('>')
+
+        assert PDSdtype('IEEE754LSBDouble') == numpy_to_pds_type(np_lsb_float64, ascii_numerics=False)
+        assert PDSdtype('SignedByte') == numpy_to_pds_type(np_int8, ascii_numerics=False)
+        assert PDSdtype('UnsignedLSB8') == numpy_to_pds_type(np_lsb_uint64, ascii_numerics=False)
+        assert PDSdtype('SignedMSB4') == numpy_to_pds_type(np_msb_int32, ascii_numerics=False)
+
+        # Test dates
+        np_date = np.datetime64("2000-01-01").dtype
+        np_specific_datetime = np.datetime64("2000-01-01 00:00").dtype
+        np_generic_datetime = np.datetime64
+
+        assert PDSdtype('ASCII_Date_YMD') == numpy_to_pds_type(np_date)
+        assert PDSdtype('ASCII_Date_Time_YMD') == numpy_to_pds_type(np_specific_datetime)
+        assert PDSdtype('ASCII_Date_Time_YMD') == numpy_to_pds_type(np_generic_datetime)
 
 
 class TestDeprecation(PDS4ToolsTestCase):
