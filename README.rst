@@ -10,9 +10,13 @@
     :target: https://raw.githubusercontent.com/Small-Bodies-Node/pds4_tools/master/LICENSES
     :alt: PDS4 Tools License
 
-.. image:: https://img.shields.io/pypi/v/pds4_tools.svg?label=PyPi%20Package
+.. image:: https://img.shields.io/pypi/v/pds4_tools.svg?label=PyPi
     :target: https://pypi.python.org/pypi/pds4_tools
     :alt: PDS4 Tools PyPi Version
+
+.. image:: https://img.shields.io/conda/vn/conda-forge/pds4_tools?label=conda-forge
+    :target: https://anaconda.org/conda-forge/pds4_tools
+    :alt: PDS4 Tools conda-forge Version
 
 |
 
