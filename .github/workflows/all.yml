@@ -239,13 +239,13 @@ jobs:
         python -m build
 
     - name: Publish to Test PyPI
-      uses: pypa/gh-action-pypi-publish@v1.4.2
+      uses: pypa/gh-action-pypi-publish@v1.13.0
       with:
         password: ${{ secrets.TEST_PYPI_TOKEN }}
         repository_url: https://test.pypi.org/legacy/
 
     - name: Publish to PyPI
-      uses: pypa/gh-action-pypi-publish@v1.4.2
+      uses: pypa/gh-action-pypi-publish@v1.13.0
       with:
         password: ${{ secrets.PYPI_TOKEN }}
       if: contains(github.ref, 'dev') == false
