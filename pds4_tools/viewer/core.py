@@ -13,7 +13,7 @@ import traceback
 import subprocess
 
 from . import cache
-from ..utils.compat import argparse
+from ..utils.compat import argparse, tk_trace_add, tk_trace_remove
 from ..utils.helpers import is_array_like
 from ..utils.logging import logger_init
 
@@ -411,18 +411,19 @@ class Window(object):
                 self._callbacks.pop(name, None)
 
     # Convenience wrapper around creating a trace for TK's variables. A trace uses a TK variable, and
-    # automatically runs the callback when a mode action is done. Modes available are 'w', called when the
-    # TK variable is written to, 'r' when a TK variable is read from and 'u' for when the variable is deleted
+    # automatically runs the callback when a mode action is done. Modes available are 'write', called
+    # when the TK variable is written to, 'read' when a TK variable is read from and 'unset' for when
+    # the variable is deleted
     def _add_trace(self, variable, mode, callback, default=None):
 
         if default is not None:
             variable.set(default)
 
-        trace_id = variable.trace(mode, callback)
+        trace_id = tk_trace_add(variable, mode, callback)
 
         # Create a callback to delete the trace, otherwise it will stay bound and prevent python
         # from clearing window memory on close
-        self._add_callback('close', variable.trace_vdelete, 'w', trace_id)
+        self._add_callback('close', tk_trace_remove, variable, mode, trace_id)
 
         return trace_id
 
@@ -787,11 +788,11 @@ class SearchableTextWindowMixIn(object):
 
         # Stores search string in search box
         self._search_text = StringVar()
-        self._add_trace(self._search_text, 'w', self._do_search)
+        self._add_trace(self._search_text, 'write', self._do_search)
 
         # Stores whether match case box is selected
         self._match_case = BooleanVar()
-        self._add_trace(self._match_case, 'w', self._do_search, default=False)
+        self._add_trace(self._match_case, 'write', self._do_search, default=False)
 
         # Stores a list of 3-valued tuples, each containing the line number, start position
         # and stop position of each result that matches the search string; and stores the index

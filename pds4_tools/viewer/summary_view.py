@@ -546,13 +546,16 @@ class StructureListWindow(Window):
 
         # Initialize menu options
         self._menu_options['quiet'] = BooleanVar()
-        self._add_trace(self._menu_options['quiet'], 'w', self._update_quiet, default=quiet)
+        self._add_trace(self._menu_options['quiet'], 'write',
+                        self._update_quiet, default=quiet)
 
         self._menu_options['lazy_load'] = BooleanVar()
-        self._add_trace(self._menu_options['lazy_load'], 'w', self._update_lazy_load, default=lazy_load)
+        self._add_trace(self._menu_options['lazy_load'], 'write',
+                        self._update_lazy_load, default=lazy_load)
 
         self._menu_options['show_headers'] = BooleanVar()
-        self._add_trace(self._menu_options['show_headers'], 'w', self._update_show_headers, default=show_headers)
+        self._add_trace(self._menu_options['show_headers'], 'write',
+                        self._update_show_headers, default=show_headers)
 
         # Add a File menu
         file_menu = self._add_menu('File', in_menu='main')
