@@ -113,7 +113,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install numpy
-        python -m pip install sphinx
+        python -m pip install "sphinx<9"
         python -m pip install numpydoc
 
     - name: Test Docs
@@ -141,7 +141,7 @@ jobs:
       run: |
         python -m pip install build
         python -m pip install numpy
-        python -m pip install sphinx
+        python -m pip install "sphinx<9"
         python -m pip install numpydoc
 
     - name: Create artifacts
