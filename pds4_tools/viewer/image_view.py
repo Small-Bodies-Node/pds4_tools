@@ -111,7 +111,7 @@ class ImageViewWindow(DataViewWindow):
             var = option['type']
             self._menu_options[option['name']] = var
 
-            self._add_trace(var, 'w', option['trace'], option['default'])
+            self._add_trace(var, 'write', option['trace'], option['default'])
 
     @property
     def settings(self):
@@ -2461,7 +2461,7 @@ class DataCubeWindow(Window):
 
         self._selected_axis = IntVar()
         self._selected_axis.set(self._structure_window.settings['selected_axis'])
-        self._add_trace(self._selected_axis, 'w',
+        self._add_trace(self._selected_axis, 'write',
                         lambda *args: self._structure_window.select_slice(axis=self._selected_axis.get()))
 
         self._sliders = []
@@ -2514,7 +2514,7 @@ class DataCubeWindow(Window):
 
             slider_var = IntVar()
             slider_var.set(axis_slice)
-            self._add_trace(slider_var, 'w', lambda *args: self._slider_moved(slider_index, axis_sequence))
+            self._add_trace(slider_var, 'write', lambda *args: self._slider_moved(slider_index, axis_sequence))
 
             slider_row_box = Frame(self._sliders_box, bg=self.get_bg('gray'))
             slider_row_box.pack(pady=(20, 10), expand=1, fill='x')
@@ -2593,7 +2593,7 @@ class ScaleParametersWindow(Window):
             var = option['type']
             self._menu_options[option['name']] = var
 
-            self._add_trace(var, 'w', option['trace'], option['default'])
+            self._add_trace(var, 'write', option['trace'], option['default'])
 
         # Add the menu
         self._add_menus()

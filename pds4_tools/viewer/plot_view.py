@@ -96,7 +96,7 @@ class PlotViewWindow(DataViewWindow):
             var = option['type']
             self._menu_options[option['name']] = var
 
-            self._add_trace(var, 'w', option['trace'], option['default'])
+            self._add_trace(var, 'write', option['trace'], option['default'])
 
     @property
     def settings(self):
@@ -2469,7 +2469,8 @@ class PlotOptionsWindow(Window):
 
         current_axis_limits = self._structure_window.menu_option('axis_limits')
         axis_limits = self._axes_options['axis_limits'] = StringVar()
-        self._add_trace(axis_limits, 'w', self._update_limits_setting, default=current_axis_limits.capitalize())
+        self._add_trace(axis_limits, 'write',
+                        self._update_limits_setting, default=current_axis_limits.capitalize())
 
         menu = OptionMenu(option_menus_box, axis_limits, *('Intelligent', 'Tight', 'Auto', 'Manual'))
         menu.config(width=15, **option_menu_params)
@@ -2480,7 +2481,8 @@ class PlotOptionsWindow(Window):
         manual_limits_box.pack(side='top', anchor='nw', pady=10)
 
         manual_limits = BooleanVar()
-        self._add_trace(manual_limits, 'w', self._update_limits_setting, default=(current_axis_limits == 'manual'))
+        self._add_trace(manual_limits, 'write',
+                        self._update_limits_setting, default=(current_axis_limits == 'manual'))
 
         b = Checkbutton(manual_limits_box, text='Manual Limits', variable=axis_limits,
                         onvalue='Manual', offvalue='Intelligent', **text_params)

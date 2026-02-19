@@ -63,7 +63,7 @@ class TabularViewWindow(DataViewWindow):
             var = option['type']
             self._menu_options[option['name']] = var
 
-            self._add_trace(var, 'w', option['trace'], option['default'])
+            self._add_trace(var, 'write', option['trace'], option['default'])
 
         # These variables are used to store widgets, and info about them, used for displaying tabular data
         self._data_boxes = []

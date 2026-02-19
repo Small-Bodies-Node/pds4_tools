@@ -38,12 +38,12 @@ class LabelWindow(SearchableTextWindowMixIn, Window):
         # Stores what display type is currently selected
         display_type = StringVar()
         self._menu_options['display_type'] = display_type
-        self._add_trace(display_type, 'w', self._update_label, default=initial_display)
+        self._add_trace(display_type, 'write', self._update_label, default=initial_display)
 
         # Stores whether label is being pretty printed or shown as in the file
         pretty_print = BooleanVar()
         self._menu_options['pretty_print'] = pretty_print
-        self._add_trace(pretty_print, 'w', self._update_label, default=True)
+        self._add_trace(pretty_print, 'write', self._update_label, default=True)
 
         # Draw the main window content
         self._set_heading('Label')

@@ -22,6 +22,22 @@ try:
 except ImportError:
     from ..extern import argparse
 
+
+# Tkinter compat (Python 3.6+)
+def tk_trace_add(variable, mode, callback):
+    try:
+        return variable.trace_add(mode, callback)
+    except AttributeError:
+        return variable.trace(mode[0], callback)
+
+
+def tk_trace_remove(variable, mode, callback_id):
+    try:
+        return variable.trace_remove(mode, callback_id)
+    except AttributeError:
+        return variable.trace_vdelete(mode[0], callback_id)
+
+
 # ElementTree compat (Python 2.7+ and 3.3+)
 ET_Element = ET.Element if isinstance(ET.Element, six.class_types) else ET._Element
 ET_Tree_iter = ET.ElementTree.iter if hasattr(ET.ElementTree, 'iter') else ET.ElementTree.getiterator
